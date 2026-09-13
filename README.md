@@ -39,6 +39,7 @@ A little collection of browser games for early learners (age 6 and up), made by 
 | 🏪🧸 Sabrina's Toy Shop | Pretend play, listening, picture-word matching, counting coins (ages 3+) | [shop-game.html](shop-game.html) |
 | 🎉🪅 Sabrina's Piñata Party | Counting whacks, tapping & dragging coordination, catching (ages 3+) | [party-game.html](party-game.html) |
 | 🍿🔥 Sabrina's Popcorn Pop | Counting heats, tapping, catching & hand-eye coordination (ages 3+) | [popcorn-game.html](popcorn-game.html) |
+| 🏠🛏️ Sabrina's Dream House | Rooms & household words, listening, matching, pretend play (ages 3+) | [house-game.html](house-game.html) |
 
 ## Tech
 

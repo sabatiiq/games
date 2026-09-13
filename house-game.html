@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Dream House! 🏠</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    user-select: none; touch-action: none;
+    background: #e1f5fe;
+  }
+  #view { position: absolute; inset: 0; display: block; }
+
+  #hud {
+    position: absolute; top: 10px; left: 0; right: 0; z-index: 5;
+    display: flex; justify-content: center; gap: 10px; pointer-events: none;
+  }
+  .chip {
+    background: rgba(255,255,255,0.88); border: 3px solid #c2185b; border-radius: 18px;
+    padding: 6px 18px; font-size: clamp(18px, 4.5vw, 28px); font-weight: bold; color: #880e4f;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+  }
+  a.home {
+    position: absolute; top: 12px; left: 12px; z-index: 6;
+    background: rgba(255,255,255,0.75); color: #c2185b; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold; pointer-events: auto;
+  }
+  #hint {
+    position: absolute; bottom: 18px; left: 0; right: 0; z-index: 5; text-align: center;
+    color: #880e4f; font-size: clamp(15px, 3.6vw, 20px); font-weight: bold; pointer-events: none;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.9);
+  }
+  #partyBtn {
+    position: absolute; right: 16px; bottom: 16px; z-index: 6;
+    width: clamp(64px, 14vw, 92px); height: clamp(64px, 14vw, 92px);
+    font-size: clamp(34px, 7vw, 50px); line-height: 1;
+    background: #ffe082; border: 4px solid #ffca28; border-radius: 50%;
+    box-shadow: 0 5px 0 #ff8f00; cursor: pointer; pointer-events: auto;
+    font-family: inherit;
+  }
+  #partyBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #ff8f00; }
+
+  #overlay {
+    position: absolute; inset: 0; z-index: 10;
+    background: rgba(90,20,70,0.5);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #fff0f5; border: 4px solid #f48fb1; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 480px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #c2185b; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #6a4a52; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #ec407a; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #ad1457;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #ad1457; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #b78897; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <div class="chip">🏠 <span id="furnCount">0</span>/<span id="furnTotal">12</span></div>
+</div>
+<div id="hint">👆 Tap the right room for each thing!</div>
+<button id="partyBtn" title="Celebrate!">🎉</button>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>🏠 Sabrina's Dream House!</h2>
+    <p>Your animal friends are moving in! 🐻🐰🐱 But the rooms are empty!</p>
+    <p>Look at what each friend carries and <b>tap the right room</b> — the bed sleeps in the <b>bedroom</b> 🛏️, the ducky swims in the <b>bathroom</b> 🦆!</p>
+    <p>Furnish all <b>4 rooms</b> with <b>12 things</b> to finish your dream house! ✨</p>
+    <p class="keyhint">Tapped the wrong room? It just wiggles — you can never lose! 😊</p>
+    <button id="startBtn">Start building! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+  const furnEl = document.getElementById('furnCount');
+  const hintEl = document.getElementById('hint');
+  const partyBtn = document.getElementById('partyBtn');
+
+  let W = 0, H = 0, dpr = 1;
+
+  const ROOMS = [
+    { key: 'bedroom',  label: 'Bedroom',    icon: '🛏️', wall: '#fce4ec', floor: '#f8bbd0', furnished: [] },
+    { key: 'bathroom', label: 'Bathroom',   icon: '🛁', wall: '#e0f7fa', floor: '#b2ebf2', furnished: [] },
+    { key: 'kitchen',  label: 'Kitchen',    icon: '🍳', wall: '#fff9c4', floor: '#ffe082', furnished: [] },
+    { key: 'living',   label: 'Living Room', icon: '🛋️', wall: '#e8f5e9', floor: '#c8e6c9', furnished: [] },
+  ];
+  const ITEMS = [
+    { room: 'bedroom',  e: '🛏️', name: 'cozy bed',    wish: 'Sleepy! Where does the cozy bed go?' },
+    { room: 'kitchen',  e: '🍳', name: 'egg pan',     wish: 'Yummy! Where do we cook eggs?' },
+    { room: 'bathroom', e: '🛁', name: 'bathtub',     wish: 'Splish splash! Where does the bathtub go?' },
+    { room: 'living',   e: '🛋️', name: 'soft sofa',   wish: 'Cozy! Where do we sit together?' },
+    { room: 'bedroom',  e: '🧸', name: 'teddy',       wish: 'The teddy is sleepy! Where does the teddy go?' },
+    { room: 'bathroom', e: '🦆', name: 'ducky',       wish: 'Quack! Where does the ducky swim?' },
+    { room: 'kitchen',  e: '🍪', name: 'cookie jar',  wish: 'Cookie time! Where do we keep cookies?' },
+    { room: 'living',   e: '📺', name: 'TV',          wish: 'Movie time! Where does the TV go?' },
+    { room: 'bedroom',  e: '💡', name: 'lamp',        wish: 'It gets dark! Where does the lamp go?' },
+    { room: 'bathroom', e: '🪥', name: 'toothbrush',  wish: 'Sparkly teeth! Where does the toothbrush go?' },
+    { room: 'kitchen',  e: '🍎', name: 'apples',      wish: 'Healthy! Where do we keep the apples?' },
+    { room: 'living',   e: '🪴', name: 'plant',       wish: 'Green and pretty! Where does the plant go?' },
+  ];
+  const FRIENDS = ['🐻', '🐰', '🐱', '🐼', '🦊', '🐨'];
+  const SLOT_POS = [[0.24, 0.52], [0.62, 0.52], [0.42, 0.84]];
+
+  let itemIdx, current, won, running, placed, busy;
+  let fx, timers, shakes, clouds, flowers;
+  let nextT;
+
+  // ---------- layout ----------
+  function houseW()   { return Math.min(680, W - 30); }
+  function scale()    { return houseW() / 680; }
+  function houseX0()  { return (W - houseW()) / 2; }
+  function houseY0()  { return 96; }
+  function houseH()   { return H - houseY0() - 118; }
+  function roomW()    { return houseW() / 2; }
+  function roomH()    { return houseH() / 2; }
+  function grassY()   { return houseY0() + houseH() + 8; }
+  function friendPos() { return { x: Math.max(70, houseX0() * 0.45), y: grassY() + (H - grassY()) / 2 + 6 }; }
+
+  function roomRect(r) {
+    return {
+      x: houseX0() + (r === 0 || r === 2 ? 0 : roomW()),
+      y: houseY0() + (r < 2 ? 0 : roomH()),
+      w: roomW(), h: roomH(),
+    };
+  }
+
+  function buildLevel() {
+    ROOMS.forEach(r => { r.furnished = []; });
+    itemIdx = 0; won = false; placed = 0; busy = false;
+    fx = []; timers = []; shakes = {};
+    clouds = [];
+    for (let i = 0; i < 4; i++) clouds.push({ x: Math.random() * W, y: 20 + Math.random() * 60, s: 0.6 + Math.random() * 0.8, v: 8 + Math.random() * 10 });
+    flowers = [];
+    for (let i = 0; i < 7; i++) flowers.push({ x: Math.random(), e: ['🌷', '🌻', '🌼', '🌸'][i % 4] });
+    furnEl.textContent = '0';
+    setCurrent();
+    hintEl.textContent = '👆 Tap the right room for each thing!';
+    hintEl.classList.remove('hidden');
+  }
+
+  function setCurrent() {
+    if (itemIdx >= ITEMS.length) { current = null; return; }
+    current = ITEMS[itemIdx];
+    busy = false;
+    hintEl.textContent = '👆 ' + current.wish;
+    speak(current.wish);
+  }
+
+  function sizeCanvas() {
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function speak(text, pitch = 1.3) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.0; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  function schedule(delay, fn) { timers.push({ t: delay, fn }); }
+
+  // ---------- tapping rooms ----------
+  function hitRoom(x, y) {
+    for (let i = 0; i < ROOMS.length; i++) {
+      const r = roomRect(i);
+      if (x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h) return i;
+    }
+    return -1;
+  }
+
+  function tapRoom(idx, px, py) {
+    const want = ROOMS.findIndex(r => r.key === current.room);
+    if (idx === want) {
+      busy = true;
+      const from = { x: friendPos().x + 60 * scale(), y: friendPos().y - 90 * scale() };
+      const to = roomCenter(want);
+      fx.push({ kind: 'fly', e: current.e, x0: from.x, y0: from.y, x1: to.x, y1: to.y, t: 0, life: 0.8 });
+      sparkle(from.x, from.y, '✨');
+    } else {
+      shakes[idx] = 0.4;
+      popText('Hmm, try again!', px, py - 30, '#ad1457');
+      speak('Oops! Where does the ' + current.name + ' go?');
+    }
+  }
+
+  function roomCenter(idx) {
+    const r = roomRect(idx);
+    return { x: r.x + r.w / 2, y: r.y + r.h * 0.55 };
+  }
+
+  function landItem() {
+    const room = ROOMS.find(r => r.key === current.room);
+    room.furnished.push(current.e);
+    placed++;
+    furnEl.textContent = placed;
+    const c = roomCenter(ROOMS.findIndex(r => r.key === current.room));
+    sparkle(c.x, c.y, '✨');
+    popText('Yes! ' + room.label + '!', c.x, c.y - 40, '#c2185b');
+    speak('Yes! The ' + current.name + ' goes in the ' + room.label + '!', 1.4);
+    if (placed % 4 === 0) schedule(1.2, () => speak(placed + ' things in! Keep going!', 1.45));
+    itemIdx++;
+    if (itemIdx >= ITEMS.length) {
+      won = true;
+      schedule(1.0, winGame);
+      current = null;
+      hintEl.classList.add('hidden');
+    } else {
+      schedule(0.9, setCurrent);
+    }
+  }
+
+  // ---------- loop ----------
+  let lastT = 0;
+  function tick(t) {
+    if (!running) return;
+    const dt = Math.min(0.04, (t - lastT) / 1000 || 0);
+    lastT = t;
+    update(dt);
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  function update(dt) {
+    for (let i = timers.length - 1; i >= 0; i--) {
+      timers[i].t -= dt;
+      if (timers[i].t <= 0) { const fn = timers[i].fn; timers.splice(i, 1); fn(); }
+    }
+    for (const k in shakes) { shakes[k] -= dt; if (shakes[k] <= 0) delete shakes[k]; }
+
+    for (const c of clouds) {
+      c.x += c.v * dt;
+      if (c.x > W + 80) c.x = -80;
+    }
+    // chimney smoke
+    if (Math.random() < dt * 2) {
+      fx.push({ kind: 'smoke', x: houseX0() + houseW() * 0.78, y: houseY0() - 46 * scale(),
+        vx: 12 + Math.random() * 10, vy: -26 - Math.random() * 14, life: 2.4, t: 0, r: 5 + Math.random() * 5 });
+    }
+
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const p = fx[i];
+      p.t += dt;
+      if (p.kind === 'fly') {
+        if (p.t >= p.life) { fx.splice(i, 1); landItem(); continue; }
+      } else {
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.t >= p.life) fx.splice(i, 1);
+      }
+    }
+  }
+
+  function sparkle(x, y, ch) {
+    for (let i = 0; i < 8; i++) fx.push({ kind: 'spark', x, y, ch, vx: (Math.random() - 0.5) * 140, vy: -70 - Math.random() * 90, life: 0.85, t: 0 });
+  }
+  function popText(txt, x, y, color) { fx.push({ kind: 'txt', x, y, txt, color, vx: 0, vy: -55, life: 1.0, t: 0 }); }
+
+  // ---------- render ----------
+  function emoji(ch, x, y, size, color) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = size + 'px serif';
+    ctx.fillStyle = color || '#5d4037';
+    ctx.fillText(ch, x, y);
+  }
+
+  function render() {
+    const now = performance.now();
+    const s = scale();
+
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H);
+    sky.addColorStop(0, '#a9def9'); sky.addColorStop(0.7, '#d9f2fb'); sky.addColorStop(1, '#e8f5e9');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H);
+
+    // sun
+    emoji('☀️', W - 70, 66, 46);
+
+    // clouds
+    for (const c of clouds) {
+      ctx.globalAlpha = 0.85;
+      emoji('☁️', c.x, c.y, Math.round(42 * c.s));
+      ctx.globalAlpha = 1;
+    }
+
+    // grass
+    ctx.fillStyle = '#a5d6a7';
+    ctx.fillRect(0, grassY(), W, H - grassY());
+    ctx.fillStyle = '#8fcf9a';
+    ctx.fillRect(0, grassY(), W, 7);
+    for (const f of flowers) emoji(f.e, f.x * W, grassY() + 26 + (f.x * 37 % 30), 20);
+
+    drawHouse(now, s);
+    drawFriend(now, s);
+
+    // fx
+    for (const p of fx) {
+      const a = Math.max(0, 1 - p.t / p.life);
+      if (p.kind === 'fly') {
+        const k = p.t / p.life;
+        const ease = k * k * (3 - 2 * k);
+        const x = p.x0 + (p.x1 - p.x0) * ease;
+        const y = p.y0 + (p.y1 - p.y0) * ease - Math.sin(k * Math.PI) * 70 * s;
+        emoji(p.e, x, y, Math.round(34 * s + 6));
+      } else if (p.kind === 'smoke') {
+        ctx.globalAlpha = 0.5 * a;
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r * (1 + p.t / p.life), 0, Math.PI * 2); ctx.fill();
+        ctx.globalAlpha = 1;
+      } else if (p.txt) {
+        ctx.globalAlpha = a;
+        ctx.font = 'bold 24px "Comic Sans MS", serif'; ctx.fillStyle = p.color || '#c2185b';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(p.txt, p.x, p.y);
+        ctx.globalAlpha = 1;
+      } else {
+        ctx.globalAlpha = a;
+        emoji(p.ch, p.x, p.y, 26);
+        ctx.globalAlpha = 1;
+      }
+    }
+  }
+
+  function drawHouse(now, s) {
+    const x0 = houseX0(), y0 = houseY0(), hw = houseW(), hh = houseH();
+
+    // house body + roof shadow
+    ctx.fillStyle = '#8d6e63';
+    rr(x0 - 8 * s, y0 - 8 * s, hw + 16 * s, hh + 16 * s, 14 * s); ctx.fill();
+    ctx.fillStyle = '#fff8e7';
+    rr(x0, y0, hw, hh, 8 * s); ctx.fill();
+
+    // chimney with puffing smoke
+    ctx.fillStyle = '#a1887f';
+    ctx.fillRect(x0 + hw * 0.74, y0 - 52 * s, 34 * s, 54 * s);
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(x0 + hw * 0.74 - 5 * s, y0 - 58 * s, 44 * s, 12 * s);
+
+    // roof
+    ctx.fillStyle = '#f06292';
+    ctx.beginPath();
+    ctx.moveTo(x0 - 30 * s, y0);
+    ctx.lineTo(x0 + hw / 2, y0 - 92 * s);
+    ctx.lineTo(x0 + hw + 30 * s, y0);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#f8bbd0';
+    ctx.beginPath();
+    ctx.moveTo(x0 - 12 * s, y0 - 4 * s);
+    ctx.lineTo(x0 + hw / 2, y0 - 84 * s);
+    ctx.lineTo(x0 + hw + 12 * s, y0 - 4 * s);
+    ctx.closePath(); ctx.fill();
+    // heart on the roof
+    emoji('💖', x0 + hw / 2, y0 - 58 * s, Math.round(26 * s + 8));
+
+    // the sign
+    ctx.fillStyle = '#ffe082';
+    rr(x0 + hw / 2 - 96 * s, y0 - 26 * s, 192 * s, 30 * s, 10 * s); ctx.fill();
+    ctx.strokeStyle = '#ffb300'; ctx.lineWidth = 2;
+    rr(x0 + hw / 2 - 96 * s, y0 - 26 * s, 192 * s, 30 * s, 10 * s); ctx.stroke();
+    ctx.fillStyle = '#6d4c41';
+    ctx.font = 'bold ' + Math.round(15 * s + 4) + 'px "Comic Sans MS", serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText("SABRINA'S HOUSE", x0 + hw / 2, y0 - 10 * s);
+
+    // rooms
+    for (let i = 0; i < ROOMS.length; i++) {
+      const r = roomRect(i);
+      const room = ROOMS[i];
+      const sh = shakes[i] || 0;
+      const ox = sh > 0 ? Math.sin(now / 30) * 5 * sh : 0;
+
+      ctx.save();
+      ctx.translate(ox, 0);
+      // wall + floor
+      ctx.fillStyle = room.wall;
+      ctx.fillRect(r.x + 5, r.y + 5, r.w - 10, r.h - 10);
+      ctx.fillStyle = room.floor;
+      ctx.fillRect(r.x + 5, r.y + r.h * 0.66, r.w - 10, r.h * 0.34 - 5);
+      // wainscot line
+      ctx.strokeStyle = 'rgba(141,110,99,0.35)'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.moveTo(r.x + 5, r.y + r.h * 0.66); ctx.lineTo(r.x + r.w - 5, r.y + r.h * 0.66); ctx.stroke();
+
+      // label + icon
+      ctx.fillStyle = '#6d4c41';
+      ctx.font = 'bold ' + Math.round(15 * s + 4) + 'px "Comic Sans MS", serif';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(room.icon + ' ' + room.label, r.x + r.w / 2, r.y + 22 * s + 8);
+
+      // furniture already placed
+      room.furnished.forEach((e, k) => {
+        const pos = SLOT_POS[k % SLOT_POS.length];
+        emoji(e, r.x + r.w * pos[0], r.y + r.h * pos[1], Math.round(30 * s + 8));
+      });
+
+      // room border
+      ctx.strokeStyle = '#8d6e63'; ctx.lineWidth = 3;
+      rr(r.x + 5, r.y + 5, r.w - 10, r.h - 10, 6); ctx.stroke();
+      ctx.restore();
+    }
+
+    // front door below the house
+    const dx = x0 + hw / 2;
+    ctx.fillStyle = '#ad1457';
+    rr(dx - 26 * s, y0 + hh - 4, 52 * s, 14 * s, 6 * s); ctx.fill();
+    ctx.fillStyle = '#ffd54f';
+    ctx.beginPath(); ctx.arc(dx, y0 + hh + 3, 3.4 * s, 0, Math.PI * 2); ctx.fill();
+  }
+
+  function drawFriend(now, s) {
+    const f = friendPos();
+    const bob = Math.sin(now / 350) * 4;
+    const animal = FRIENDS[(current ? itemIdx : 0) % FRIENDS.length];
+    emoji(animal, f.x, f.y + bob, Math.round(42 * s + 8));
+
+    if (!current) return;
+
+    // speech bubble with the wish
+    const bw = Math.min(250, W - 40), bh = 92 * s + 20;
+    const bx = f.x + 66 * s, by = f.y - 118 * s;
+    ctx.save();
+    // tail
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#f48fb1'; ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(bx - 8, by + bh - 14);
+    ctx.lineTo(f.x + 14, f.y - 26);
+    ctx.lineTo(bx + 30, by + bh);
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+    rr(bx, by, bw, bh, 16); ctx.fill(); ctx.stroke();
+    // item emoji
+    emoji(current.e, bx + bw / 2, by + 30, Math.round(30 * s + 8));
+    // wish text, wrapped
+    ctx.fillStyle = '#6a4a52';
+    ctx.font = 'bold ' + Math.round(13 * s + 3) + 'px "Comic Sans MS", serif';
+    wrapText(current.wish, bx + bw / 2, by + 62, bw - 24, Math.round(15 * s + 4));
+    ctx.restore();
+  }
+
+  function wrapText(text, cx, y, maxW, lineH) {
+    const words = text.split(' ');
+    let line = '', lines = [];
+    for (const w of words) {
+      const test = line ? line + ' ' + w : w;
+      if (ctx.measureText(test).width > maxW && line) { lines.push(line); line = w; }
+      else line = test;
+    }
+    if (line) lines.push(line);
+    lines.forEach((l, i) => ctx.fillText(l, cx, y + i * lineH));
+  }
+
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- win ----------
+  function winGame() {
+    const msg = placed >= 12 ? 'Every room is cozy and full! 🌟' : 'What a lovely home, Sabrina! 🎈';
+    card.innerHTML = `
+      <h2>🏠 Your dream house is ready!</h2>
+      <p>You furnished <strong>${placed}</strong> things in all <strong>4 rooms</strong>!</p>
+      <p>${msg}</p>
+      <button id="againBtn">Build again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', start);
+    speak('Your dream house is ready! Hooray, Sabrina!', 1.45);
+    sparkle(W / 2, houseY0() + houseH() / 2, '🎉');
+    for (let i = 0; i < 26; i++) {
+      fx.push({ kind: 'spark', x: W / 2 + (Math.random() - 0.5) * 400, y: H / 2 + (Math.random() - 0.5) * 220,
+        ch: ['✨', '⭐', '🎉', '🏠', '💖', '🎈'][Math.floor(Math.random() * 6)],
+        vx: (Math.random() - 0.5) * 260, vy: -120 - Math.random() * 140, life: 1.3, t: 0 });
+    }
+  }
+
+  function start() {
+    overlay.classList.add('hidden');
+    sizeCanvas();
+    buildLevel();
+    running = true;
+    lastT = performance.now();
+    requestAnimationFrame(tick);
+    speak("Welcome to your dream house! Help the friends find the right rooms!", 1.35);
+  }
+
+  // ---------- input ----------
+  canvas.addEventListener('pointerdown', e => {
+    if (won || busy || !current) return;
+    const idx = hitRoom(e.clientX, e.clientY);
+    if (idx >= 0) { tapRoom(idx, e.clientX, e.clientY); }
+    e.preventDefault();
+  });
+
+  partyBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  partyBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!running) return;
+    speak('Dream house! Dream house!', 1.5);
+    popText('Dream house! 🏠', W / 2, houseY0() - 20, '#c2185b');
+    sparkle(W / 2, houseY0() + 40, '💖');
+  });
+
+  window.addEventListener('resize', () => { sizeCanvas(); });
+
+  document.getElementById('startBtn').addEventListener('click', start);
+  sizeCanvas();
+})();
+</script>
+</body>
+</html>
