@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Boat Ride! ⛵</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    user-select: none; touch-action: none;
+    background: #b3e5fc;
+  }
+  #view { position: absolute; inset: 0; display: block; }
+
+  #hud {
+    position: absolute; top: 10px; left: 0; right: 0; z-index: 5;
+    display: flex; justify-content: center; gap: 10px; pointer-events: none;
+  }
+  .chip {
+    background: rgba(255,255,255,0.88); border: 3px solid #0277bd; border-radius: 18px;
+    padding: 6px 18px; font-size: clamp(18px, 4.5vw, 28px); font-weight: bold; color: #01579b;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+  }
+  a.home {
+    position: absolute; top: 12px; left: 12px; z-index: 6;
+    background: rgba(255,255,255,0.75); color: #0277bd; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold; pointer-events: auto;
+  }
+  #hint {
+    position: absolute; bottom: 18px; left: 0; right: 0; z-index: 5; text-align: center;
+    color: #01579b; font-size: clamp(15px, 3.6vw, 20px); font-weight: bold; pointer-events: none;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.9);
+  }
+  #partyBtn {
+    position: absolute; right: 16px; bottom: 16px; z-index: 6;
+    width: clamp(64px, 14vw, 92px); height: clamp(64px, 14vw, 92px);
+    font-size: clamp(34px, 7vw, 50px); line-height: 1;
+    background: #ffe082; border: 4px solid #ffca28; border-radius: 50%;
+    box-shadow: 0 5px 0 #ff8f00; cursor: pointer; pointer-events: auto;
+    font-family: inherit;
+  }
+  #partyBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #ff8f00; }
+
+  #overlay {
+    position: absolute; inset: 0; z-index: 10;
+    background: rgba(10,50,90,0.5);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #e1f5fe; border: 4px solid #81d4fa; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 480px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.35);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #0277bd; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #3e6474; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #0288d1; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #01579b;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #01579b; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #7ba7b8; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <div class="chip">🚤 <span id="rideCount">0</span>/<span id="rideTotal">8</span></div>
+  <div class="chip">⭐ <span id="starCount">0</span></div>
+</div>
+<div id="hint">👆 Drag anywhere to steer your boat!</div>
+<button id="partyBtn" title="Celebrate!">🎉</button>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>⛵ Sabrina's Boat Ride!</h2>
+    <p>Your animal friends are floating on the lake and need a ride home! 🐰💦</p>
+    <p><b>Drag your finger</b> (or use the arrow keys) to steer the boat — sail close to scoop a friend aboard!</p>
+    <p>Then take them to the <b>dock</b> 🛳️ on the right. Bring all <b>8 friends</b> home — and grab shiny ⭐ stars on the way!</p>
+    <p class="keyhint">Big waves just rock the boat a little — you can never lose! 😊</p>
+    <button id="startBtn">Set sail! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+  const rideEl = document.getElementById('rideCount');
+  const starEl = document.getElementById('starCount');
+  const hintEl = document.getElementById('hint');
+  const partyBtn = document.getElementById('partyBtn');
+
+  let W = 0, H = 0, dpr = 1;
+
+  const GOAL = 8;
+  const NUMWORDS = ['One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten'];
+  const FRIENDS = [
+    { name: 'bunny',   e: '🐰' }, { name: 'bear',  e: '🐻' },
+    { name: 'kitty',   e: '🐱' }, { name: 'panda', e: '🐼' },
+    { name: 'fox',     e: '🦊' }, { name: 'koala', e: '🐨' },
+    { name: 'frog',    e: '🐸' }, { name: 'penguin', e: '🐧' },
+  ];
+
+  let won, running, placed, carrying, rockT, waveT;
+  let boat, target, keys, current, stars, waves, lilies, clouds, fx, timers;
+  const input = { up: false, down: false, left: false, right: false };
+
+  // ---------- layout ----------
+  function horizonY() { return Math.round(H * 0.42); }
+  function bankX()    { return W - 74; }
+  function dockX()    { return W - 210; }
+  function dockY()    { return H - 165; }
+  function waterMinY() { return horizonY() + 48; }
+  function waterMaxY() { return H - 34; }
+
+  function randSpot() {
+    for (let tries = 0; tries < 30; tries++) {
+      const x = 60 + Math.random() * (bankX() - 240);
+      const y = waterMinY() + 20 + Math.random() * (waterMaxY() - waterMinY() - 40);
+      if (Math.hypot(x - boat.x, y - boat.y) > 170) return { x, y };
+    }
+    return { x: 80, y: waterMinY() + 30 };
+  }
+
+  function buildLevel() {
+    won = false; placed = 0; carrying = false; rockT = 0; waveT = 5;
+    boat = { x: W / 2, y: (waterMinY() + waterMaxY()) / 2, vx: 0, vy: 0 };
+    target = null;
+    input.up = input.down = input.left = input.right = false;
+    current = null; waves = []; fx = []; timers = [];
+    stars = [];
+    for (let i = 0; i < 6; i++) stars.push({ ...randSpot(), ph: Math.random() * 6 });
+    lilies = [];
+    for (let i = 0; i < 5; i++) lilies.push({ x: Math.random(), y: Math.random(), ph: Math.random() * 6 });
+    clouds = [];
+    for (let i = 0; i < 4; i++) clouds.push({ x: Math.random() * W, y: 16 + Math.random() * 54, s: 0.6 + Math.random() * 0.8, v: 8 + Math.random() * 10 });
+    rideEl.textContent = '0';
+    starEl.textContent = '0';
+    hintEl.textContent = '👆 Drag anywhere to steer your boat!';
+    hintEl.classList.remove('hidden');
+    schedule(0.7, spawnFriend);
+  }
+
+  function sizeCanvas() {
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    if (boat) {
+      boat.x = Math.max(30, Math.min(W - 30, boat.x));
+      boat.y = Math.max(waterMinY(), Math.min(waterMaxY(), boat.y));
+    }
+  }
+
+  function speak(text, pitch = 1.3) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.0; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  function schedule(delay, fn) { timers.push({ t: delay, fn }); }
+
+  // ---------- friends, stars, waves ----------
+  function spawnFriend() {
+    const f = FRIENDS[placed % FRIENDS.length];
+    const pos = randSpot();
+    current = { ...f, ...pos, ph: Math.random() * 6 };
+    hintEl.textContent = '👆 Sail to the ' + current.name + '! ' + current.e;
+    speak('Sail to the ' + current.name + '! The ' + current.name + ' needs a ride!');
+  }
+
+  function pickUp() {
+    carrying = true;
+    sparkle(boat.x, boat.y - 30, '💦');
+    popText('Come aboard!', current.x, current.y - 40, '#01579b');
+    speak('Come aboard, ' + current.name + '!');
+    hintEl.textContent = '🛳️ Take the ' + current.name + ' to the dock!';
+  }
+
+  function dropOff() {
+    carrying = false;
+    placed++;
+    rideEl.textContent = placed;
+    sparkle(dockX() + 40, dockY() - 20, '🎉');
+    popText('Hooray!', boat.x, boat.y - 50, '#0277bd');
+    speak(NUMWORDS[placed - 1] + ' friend home! Hooray!', 1.45);
+    current = null;
+    if (placed >= GOAL) { won = true; schedule(1.0, winGame); hintEl.classList.add('hidden'); }
+    else schedule(1.0, spawnFriend);
+  }
+
+  function collectStar(s) {
+    starEl.textContent = +starEl.textContent + 1;
+    const n = +starEl.textContent;
+    sparkle(s.x, s.y, '⭐');
+    popText('+1', s.x, s.y - 14, '#f9a825');
+    speak((NUMWORDS[n - 1] || n) + ' star' + (n === 1 ? '!' : 's!'), 1.5);
+    const pos = randSpot();
+    s.x = pos.x; s.y = pos.y;
+  }
+
+  function spawnWave() {
+    const dir = Math.random() < 0.5 ? 1 : -1;
+    waves.push({ x: dir > 0 ? -120 : W + 120, dir, v: 130 + Math.random() * 50,
+      y: waterMinY() + 30 + Math.random() * (waterMaxY() - waterMinY() - 80), hit: false });
+  }
+
+  // ---------- loop ----------
+  let lastT = 0;
+  function tick(t) {
+    if (!running) return;
+    const dt = Math.min(0.04, (t - lastT) / 1000 || 0);
+    lastT = t;
+    update(dt);
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  function update(dt) {
+    for (let i = timers.length - 1; i >= 0; i--) {
+      timers[i].t -= dt;
+      if (timers[i].t <= 0) { const fn = timers[i].fn; timers.splice(i, 1); fn(); }
+    }
+
+    if (rockT > 0) rockT -= dt;
+
+    // steer: arrow keys first, else sail toward the finger's last point
+    const sp = 300 * (rockT > 0 ? 0.55 : 1);
+    let tvx = 0, tvy = 0;
+    if (input.left || input.right || input.up || input.down) {
+      tvx = ((input.right ? 1 : 0) - (input.left ? 1 : 0)) * sp;
+      tvy = ((input.down ? 1 : 0) - (input.up ? 1 : 0)) * sp;
+    } else if (target) {
+      const dx = target.x - boat.x, dy = target.y - boat.y;
+      const d = Math.hypot(dx, dy);
+      if (d > 10) { tvx = dx / d * sp; tvy = dy / d * sp; }
+    }
+    boat.vx += (tvx - boat.vx) * Math.min(1, 6 * dt);
+    boat.vy += (tvy - boat.vy) * Math.min(1, 6 * dt);
+    boat.x += boat.vx * dt;
+    boat.y += boat.vy * dt;
+    boat.x = Math.max(30, Math.min(W - 30, boat.x));
+    boat.y = Math.max(waterMinY(), Math.min(waterMaxY(), boat.y));
+
+    // scoop a friend
+    if (!won && !carrying && current &&
+        Math.hypot(boat.x - current.x, boat.y - current.y) < 62) {
+      pickUp();
+    }
+    // deliver at the dock
+    if (!won && carrying && boat.x > W - 250 && boat.y > H - 290) {
+      dropOff();
+    }
+    // stars
+    if (!won) {
+      for (const s of stars) {
+        if (Math.hypot(boat.x - s.x, boat.y - s.y) < 52) collectStar(s);
+      }
+    }
+
+    // rolling waves
+    waveT -= dt;
+    if (waveT <= 0) { waveT = 7 + Math.random() * 5; spawnWave(); }
+    for (const w of waves) {
+      w.x += w.dir * w.v * dt;
+      if (!w.hit && Math.abs(w.x - boat.x) < 95 && Math.abs(w.y - boat.y) < 48) {
+        w.hit = true; rockT = 1.1;
+        sparkle(boat.x, boat.y, '💦');
+        popText('Whee! A wave!', boat.x, boat.y - 60, '#0288d1');
+      }
+    }
+    for (let i = waves.length - 1; i >= 0; i--) {
+      if (waves[i].x < -160 || waves[i].x > W + 160) waves.splice(i, 1);
+    }
+
+    for (const c of clouds) {
+      c.x += c.v * dt;
+      if (c.x > W + 80) c.x = -80;
+    }
+
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const p = fx[i];
+      p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.t >= p.life) fx.splice(i, 1);
+    }
+  }
+
+  function sparkle(x, y, ch) {
+    for (let i = 0; i < 8; i++) fx.push({ kind: 'spark', x, y, ch, vx: (Math.random() - 0.5) * 150, vy: -70 - Math.random() * 90, life: 0.85, t: 0 });
+  }
+  function popText(txt, x, y, color) { fx.push({ kind: 'txt', x, y, txt, color, vx: 0, vy: -55, life: 1.0, t: 0 }); }
+
+  // ---------- render ----------
+  function emoji(ch, x, y, size, color) {
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.font = size + 'px serif';
+    ctx.fillStyle = color || '#37474f';
+    ctx.fillText(ch, x, y);
+  }
+
+  function render() {
+    const now = performance.now();
+
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, horizonY());
+    sky.addColorStop(0, '#a9def9'); sky.addColorStop(1, '#dcf3fc');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, horizonY());
+    emoji('☀️', W - 66, 60, 46);
+    for (const c of clouds) {
+      ctx.globalAlpha = 0.9;
+      emoji('☁️', c.x, c.y, Math.round(42 * c.s));
+      ctx.globalAlpha = 1;
+    }
+
+    // hills + trees on the far shore
+    ctx.fillStyle = '#a5d6a7';
+    ctx.beginPath(); ctx.ellipse(W * 0.22, horizonY() + 26, 260, 84, 0, Math.PI, 0); ctx.fill();
+    ctx.fillStyle = '#81c784';
+    ctx.beginPath(); ctx.ellipse(W * 0.62, horizonY() + 30, 330, 96, 0, Math.PI, 0); ctx.fill();
+    for (let i = 0; i < 6; i++) emoji('🌲', 70 + i * (W - 140) / 5, horizonY() - 4 + (i % 2) * 10, 22);
+
+    // water
+    const water = ctx.createLinearGradient(0, horizonY(), 0, H);
+    water.addColorStop(0, '#4fc3f7'); water.addColorStop(1, '#1e88e5');
+    ctx.fillStyle = water;
+    ctx.fillRect(0, horizonY(), W, H - horizonY());
+
+    // sparkle wave squiggles
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 3; ctx.lineCap = 'round';
+    for (let row = 0; row < 4; row++) {
+      const wy = horizonY() + 34 + row * (H - horizonY() - 20) / 4;
+      for (let i = 0; i < 5; i++) {
+        const wx = ((i * 260 + now / 22 * (1 + row * 0.3)) % (W + 260)) - 130;
+        ctx.beginPath();
+        ctx.moveTo(wx, wy);
+        ctx.quadraticCurveTo(wx + 22, wy - 7, wx + 44, wy);
+        ctx.stroke();
+      }
+    }
+
+    // lily pads & duck friends
+    for (const l of lilies) {
+      const lx = l.x * (bankX() - 140) + 50;
+      const ly = waterMinY() + 30 + l.y * (waterMaxY() - waterMinY() - 60);
+      emoji('🪷', lx, ly + Math.sin(now / 500 + l.ph) * 4, 26);
+    }
+    emoji('🦆', W * 0.12, horizonY() + 58 + Math.sin(now / 420) * 5, 30);
+
+    drawDock(now);
+    drawStars(now);
+    drawCurrentFriend(now);
+    drawWaves(now);
+    drawBoat(now);
+
+    // fx
+    for (const p of fx) {
+      const a = Math.max(0, 1 - p.t / p.life);
+      ctx.globalAlpha = a;
+      if (p.txt) {
+        ctx.font = 'bold 24px "Comic Sans MS", serif'; ctx.fillStyle = p.color || '#01579b';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+        ctx.fillText(p.txt, p.x, p.y);
+      } else {
+        emoji(p.ch, p.x, p.y, 26);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  function drawDock(now) {
+    // grassy bank on the right
+    ctx.fillStyle = '#a5d6a7';
+    ctx.fillRect(bankX(), horizonY(), W - bankX(), H - horizonY());
+    ctx.fillStyle = '#8fcf9a';
+    ctx.fillRect(bankX(), horizonY(), 8, H - horizonY());
+    // little lighthouse
+    const lx = bankX() + 36;
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(lx - 13, horizonY() + 34, 26, 46);
+    ctx.fillStyle = '#ef5350';
+    ctx.fillRect(lx - 13, horizonY() + 34, 26, 12);
+    ctx.fillRect(lx - 13, horizonY() + 58, 26, 12);
+    ctx.fillStyle = '#f9a825';
+    ctx.beginPath(); ctx.arc(lx, horizonY() + 30, 7, 0, Math.PI * 2); ctx.fill();
+    ctx.fillStyle = '#ef5350';
+    ctx.beginPath(); ctx.moveTo(lx - 9, horizonY() + 34); ctx.lineTo(lx + 9, horizonY() + 34); ctx.lineTo(lx, horizonY() + 22); ctx.closePath(); ctx.fill();
+
+    // wooden pier
+    ctx.fillStyle = '#8d6e63';
+    ctx.fillRect(dockX() - 14, dockY(), bankX() - dockX() + 20, 26);
+    ctx.fillStyle = '#a1887f';
+    for (let px = dockX() - 8; px < bankX(); px += 26) ctx.fillRect(px, dockY() + 3, 16, 20);
+    ctx.fillStyle = '#6d4c41';
+    ctx.fillRect(dockX() + 4, dockY() + 26, 9, 34);
+    ctx.fillRect(bankX() - 26, dockY() + 26, 9, 30);
+    // flag on the pier
+    ctx.strokeStyle = '#6d4c41'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(dockX() + 6, dockY()); ctx.lineTo(dockX() + 6, dockY() - 44); ctx.stroke();
+    ctx.fillStyle = '#ffd54f';
+    ctx.beginPath();
+    ctx.moveTo(dockX() + 8, dockY() - 44); ctx.lineTo(dockX() + 40, dockY() - 35); ctx.lineTo(dockX() + 8, dockY() - 26);
+    ctx.closePath(); ctx.fill();
+
+    // friends already home, cheering on the bank
+    for (let i = 0; i < placed; i++) {
+      const fx2 = bankX() + 18 + (i % 2) * 26;
+      const fy = H - 60 - Math.floor(i / 2) * 34;
+      emoji(FRIENDS[i].e, fx2, fy, 24);
+    }
+
+    // glowing arrow while a friend is aboard
+    if (carrying) {
+      const bob = Math.sin(now / 220) * 7;
+      emoji('⬇️', dockX() + 16, dockY() - 66 + bob, 34);
+      if (Math.random() < 0.15) sparkle(dockX() + 20, dockY() - 12, '✨');
+    }
+  }
+
+  function drawStars(now) {
+    for (const s of stars) {
+      const bob = Math.sin(now / 380 + s.ph) * 5;
+      emoji('⭐', s.x, s.y + bob, 30);
+    }
+  }
+
+  function drawCurrentFriend(now) {
+    if (!current || carrying) return;
+    const bob = Math.sin(now / 400 + current.ph) * 5;
+    const x = current.x, y = current.y + bob;
+    // ripple
+    ctx.strokeStyle = 'rgba(255,255,255,0.55)'; ctx.lineWidth = 2.5;
+    const rr2 = 30 + (now / 600 % 1) * 14;
+    ctx.beginPath(); ctx.arc(x, y + 12, rr2, 0, Math.PI * 2); ctx.stroke();
+    // swim ring
+    ctx.strokeStyle = '#ef5350'; ctx.lineWidth = 7;
+    ctx.beginPath(); ctx.arc(x, y + 10, 28, 0, Math.PI * 2); ctx.stroke();
+    ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 7;
+    for (let k = 0; k < 4; k++) {
+      ctx.beginPath(); ctx.arc(x, y + 10, 28, k * Math.PI / 2 + 0.28, k * Math.PI / 2 + 0.86); ctx.stroke();
+    }
+    emoji(current.e, x, y, 32);
+  }
+
+  function drawWaves(now) {
+    for (const w of waves) {
+      ctx.fillStyle = 'rgba(255,255,255,0.4)';
+      ctx.beginPath();
+      ctx.ellipse(w.x, w.y, 95, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.65)';
+      ctx.beginPath();
+      ctx.ellipse(w.x + w.dir * 40, w.y - 8, 55, 16, 0, 0, Math.PI * 2);
+      ctx.fill();
+      emoji('💦', w.x - w.dir * 55, w.y - 22, 24);
+    }
+  }
+
+  function drawBoat(now) {
+    const rock = Math.sin(now / 280) * 0.05 + (rockT > 0 ? Math.sin(now / 60) * 0.16 * rockT : 0);
+    // shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.14)';
+    ctx.beginPath(); ctx.ellipse(boat.x, boat.y + 26, 52, 12, 0, 0, Math.PI * 2); ctx.fill();
+
+    ctx.save();
+    ctx.translate(boat.x, boat.y);
+    ctx.rotate(rock);
+    // hull
+    ctx.fillStyle = '#f9a825';
+    ctx.beginPath();
+    ctx.moveTo(-52, -12);
+    ctx.quadraticCurveTo(0, -26, 52, -12);
+    ctx.quadraticCurveTo(40, 26, 0, 30);
+    ctx.quadraticCurveTo(-40, 26, -52, -12);
+    ctx.closePath(); ctx.fill();
+    ctx.fillStyle = '#ffd54f';
+    ctx.beginPath();
+    ctx.moveTo(-46, -8);
+    ctx.quadraticCurveTo(0, -20, 46, -8);
+    ctx.quadraticCurveTo(30, 14, 0, 17);
+    ctx.quadraticCurveTo(-30, 14, -46, -8);
+    ctx.closePath(); ctx.fill();
+    // passengers peeking over the hull
+    if (carrying) emoji(current.e, 0, -22 + Math.sin(now / 300) * 2, 30);
+    // mast + flag
+    ctx.strokeStyle = '#6d4c41'; ctx.lineWidth = 4;
+    ctx.beginPath(); ctx.moveTo(20, -12); ctx.lineTo(20, -58); ctx.stroke();
+    ctx.fillStyle = '#7e57c2';
+    ctx.beginPath();
+    ctx.moveTo(22, -58); ctx.lineTo(50, -50); ctx.lineTo(22, -42);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+
+    // little wake
+    if (Math.hypot(boat.vx, boat.vy) > 30) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 3;
+      ctx.beginPath(); ctx.arc(boat.x - Math.sign(boat.vx || 1) * 55, boat.y + 18, 12, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  function rr(x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- win ----------
+  function winGame() {
+    const stars = starEl.textContent;
+    const msg = stars >= 10 ? 'And SO many stars! You are a star captain! 🌟'
+              : stars >= 5 ? 'Great star collecting, Captain Sabrina! 💪'
+              : 'What a lovely day on the lake! 🎈';
+    card.innerHTML = `
+      <h2>⛵ What a great captain!</h2>
+      <p>You brought all <strong>8 friends</strong> home and found <strong>${stars} stars</strong>!</p>
+      <p>${msg}</p>
+      <button id="againBtn">Sail again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', start);
+    speak('All eight friends are home! What a great captain! Hooray, Sabrina!', 1.45);
+    sparkle(boat.x, boat.y - 40, '🎉');
+    for (let i = 0; i < 26; i++) {
+      fx.push({ kind: 'spark', x: W / 2 + (Math.random() - 0.5) * 400, y: H / 2 + (Math.random() - 0.5) * 220,
+        ch: ['✨', '⭐', '🎉', '⛵', '💦', '🎈'][Math.floor(Math.random() * 6)],
+        vx: (Math.random() - 0.5) * 260, vy: -120 - Math.random() * 140, life: 1.3, t: 0 });
+    }
+  }
+
+  function start() {
+    overlay.classList.add('hidden');
+    sizeCanvas();
+    buildLevel();
+    running = true;
+    lastT = performance.now();
+    requestAnimationFrame(tick);
+    speak('Set sail, Captain Sabrina! Your friends need rides!', 1.35);
+  }
+
+  // ---------- input ----------
+  canvas.addEventListener('pointerdown', e => {
+    if (won) return;
+    target = { x: e.clientX, y: e.clientY };
+    e.preventDefault();
+  });
+  canvas.addEventListener('pointermove', e => {
+    if (target && e.buttons) target = { x: e.clientX, y: e.clientY };
+  });
+  window.addEventListener('pointerup', () => { /* keep sailing to the last point */ });
+  canvas.addEventListener('pointercancel', () => { target = null; });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowLeft'  || e.key === 'a') { input.left = true;  target = null; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd') { input.right = true; target = null; e.preventDefault(); }
+    if (e.key === 'ArrowUp'    || e.key === 'w') { input.up = true;    target = null; e.preventDefault(); }
+    if (e.key === 'ArrowDown'  || e.key === 's') { input.down = true;  target = null; e.preventDefault(); }
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowLeft'  || e.key === 'a') input.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') input.right = false;
+    if (e.key === 'ArrowUp'    || e.key === 'w') input.up = false;
+    if (e.key === 'ArrowDown'  || e.key === 's') input.down = false;
+  });
+
+  partyBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  partyBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!running) return;
+    speak('Splish splash!', 1.5);
+    popText('Splish splash! 💦', boat.x, boat.y - 70, '#0288d1');
+    sparkle(boat.x, boat.y, '💦');
+  });
+
+  window.addEventListener('resize', () => { sizeCanvas(); });
+
+  document.getElementById('startBtn').addEventListener('click', start);
+  sizeCanvas();
+})();
+</script>
+</body>
+</html>
