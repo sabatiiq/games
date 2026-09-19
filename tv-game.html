@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's TV Time! 📺</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: linear-gradient(135deg, #b3e5fc 0%, #e1bee7 60%, #fff3e0 100%);
+    user-select: none; touch-action: manipulation;
+  }
+  body { min-height: 100vh; }
+  #app { max-width: 900px; margin: 0 auto; padding: 14px 12px 24px; }
+
+  a.home {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.85); color: #0d47a1; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.92); border: 4px solid #0277bd; border-radius: 30px;
+    padding: 8px 20px; font-size: clamp(16px, 3.2vw, 24px); font-weight: bold; color: #01579b;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+  #wishChip { border-color: #ef6c00; color: #e65100; }
+
+  /* the TV */
+  #tvZone { display: flex; justify-content: center; }
+  #tv {
+    width: min(88vw, 560px);
+    background: linear-gradient(180deg, #546e7a, #37474f);
+    border-radius: 26px;
+    padding: 18px 18px 26px;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.35), inset 0 2px 6px rgba(255,255,255,0.25);
+    position: relative;
+  }
+  #screenWrap {
+    position: relative; overflow: hidden;
+    border-radius: 16px;
+    border: 6px solid #263238;
+    aspect-ratio: 16 / 10;
+  }
+  #screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 4px;
+  }
+  #showMain {
+    font-size: clamp(70px, 16vw, 130px); line-height: 1.1;
+    animation: bounce 1.3s ease-in-out infinite alternate;
+    filter: drop-shadow(0 6px 8px rgba(0,0,0,0.25));
+  }
+  @keyframes bounce {
+    from { transform: translateY(-6px) rotate(-3deg); }
+    to   { transform: translateY(6px)  rotate(3deg); }
+  }
+  .extra { position: absolute; font-size: clamp(26px, 6vw, 44px); animation: drift 3s ease-in-out infinite alternate; }
+  @keyframes drift {
+    from { transform: translateY(-8px) rotate(-8deg); }
+    to   { transform: translateY(8px)  rotate(8deg); }
+  }
+  #showName {
+    font-weight: bold; font-size: clamp(17px, 3.6vw, 26px);
+    text-shadow: 0 2px 4px rgba(0,0,0,0.4);
+  }
+  #chLabel {
+    position: absolute; top: 10px; right: 14px;
+    font-family: 'Courier New', monospace; font-weight: bold;
+    font-size: clamp(18px, 4vw, 30px); color: #7cff6b;
+    background: rgba(0,0,0,0.55); border-radius: 8px; padding: 2px 10px;
+    letter-spacing: 2px;
+  }
+  #static {
+    position: absolute; inset: 0; opacity: 0.85; pointer-events: none;
+    background:
+      radial-gradient(circle at 20% 30%, rgba(255,255,255,0.7) 0 2px, transparent 3px),
+      radial-gradient(circle at 70% 60%, rgba(255,255,255,0.6) 0 2px, transparent 3px),
+      radial-gradient(circle at 40% 80%, rgba(255,255,255,0.7) 0 1px, transparent 2px),
+      radial-gradient(circle at 85% 20%, rgba(255,255,255,0.6) 0 1px, transparent 2px),
+      repeating-linear-gradient(0deg, #9e9e9e 0 3px, #616161 3px 6px);
+    background-size: 60px 60px, 80px 80px, 50px 50px, 70px 70px, 8px 8px;
+    display: none;
+  }
+  #static.on { display: block; animation: jitter 0.12s infinite; }
+  @keyframes jitter {
+    0% { background-position: 0 0, 10px 20px, 30px 5px, 5px 35px, 0 0; }
+    50% { background-position: 25px 40px, 0 10px, 15px 30px, 40px 0, 4px 0; }
+    100% { background-position: 10px 15px, 30px 0, 5px 20px, 20px 40px, 0 4px; }
+  }
+  #tvStand {
+    width: 40%; height: 16px; margin: 0 auto;
+    background: #37474f; border-radius: 0 0 12px 12px;
+  }
+
+  /* couch of happy watchers */
+  #couchRow { display: flex; justify-content: center; margin-top: 12px; min-height: 56px; }
+  #couch {
+    background: #ef5350; border-radius: 22px 22px 8px 8px;
+    padding: 8px 18px 10px; display: flex; gap: 6px; align-items: flex-end; min-height: 52px;
+    box-shadow: 0 6px 0 rgba(0,0,0,0.15);
+    border: 4px solid #d84315;
+  }
+  #couch span { font-size: 34px; animation: hop 0.5s ease-out; }
+  @keyframes hop {
+    0% { transform: translateY(14px) scale(0.4); }
+    60% { transform: translateY(-6px) scale(1.15); }
+    100% { transform: translateY(0) scale(1); }
+  }
+
+  /* request card */
+  #request {
+    margin: 14px auto 6px; text-align: center; max-width: 640px;
+    background: rgba(255,255,255,0.92); border: 4px solid #ef6c00; border-radius: 22px;
+    padding: 10px 16px; box-shadow: 0 6px 0 rgba(0,0,0,0.12);
+  }
+  #requestText { font-size: clamp(17px, 3.6vw, 25px); font-weight: bold; color: #e65100; }
+
+  #hint {
+    text-align: center; margin: 10px 0 12px;
+    color: #01579b; font-size: clamp(15px, 3.4vw, 20px); font-weight: bold;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.9);
+  }
+
+  /* remote */
+  #remote {
+    margin: 0 auto; width: fit-content;
+    background: linear-gradient(180deg, #78909c, #455a64);
+    border-radius: 24px; padding: 14px 16px;
+    box-shadow: 0 10px 24px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.3);
+    display: flex; gap: 14px; align-items: center;
+  }
+  #pad { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .chbtn {
+    font-family: inherit; font-weight: bold;
+    width: clamp(56px, 12vw, 74px); height: clamp(56px, 12vw, 74px);
+    border-radius: 16px; border: 3px solid #90a4ae;
+    background: #eceff1; cursor: pointer;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    box-shadow: 0 4px 0 #607d8b; transition: transform 0.08s;
+  }
+  .chbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #607d8b; }
+  .chbtn .num { font-size: clamp(18px, 3.6vw, 26px); color: #37474f; line-height: 1; }
+  .chbtn .ic { font-size: clamp(16px, 3.2vw, 22px); line-height: 1; }
+  .side { display: flex; flex-direction: column; gap: 10px; }
+  .bigbtn {
+    font-family: inherit; font-weight: bold;
+    width: clamp(72px, 16vw, 96px); height: clamp(60px, 13vw, 80px);
+    border-radius: 18px; border: 3px solid #90a4ae;
+    background: #ffeb3b; color: #5d4037;
+    font-size: clamp(15px, 3vw, 21px); cursor: pointer;
+    box-shadow: 0 4px 0 #f57f17; transition: transform 0.08s;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+  }
+  .bigbtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #f57f17; }
+  .bigbtn .ic { font-size: clamp(20px, 4vw, 28px); line-height: 1; }
+
+  /* overlay */
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(13,40,70,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #f2f9ff; border: 4px solid #0288d1; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 480px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #01579b; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #1c3d5a; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #0288d1; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #01579b;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #01579b; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #6b93b0; margin-top: 6px; }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+
+<div id="app">
+  <div id="hud">
+    <div class="chip">📺 Sabrina's TV Time</div>
+    <div class="chip">👀 Watching: <span id="servedCount">0</span> / <span id="servedTotal">5</span></div>
+  </div>
+
+  <div id="request">
+    <div id="requestText">📭 Someone will ask for a show soon…</div>
+  </div>
+
+  <div id="tvZone">
+    <div>
+      <div id="tv">
+        <div id="screenWrap">
+          <div id="screen">
+            <div id="showMain">📺</div>
+            <div id="showName">TV is sleeping…</div>
+          </div>
+          <div id="chLabel">CH --</div>
+          <div id="static"></div>
+        </div>
+      </div>
+      <div id="tvStand"></div>
+    </div>
+  </div>
+
+  <div id="couchRow"><div id="couch">🍿</div></div>
+
+  <div id="hint">Press the remote buttons to find the right show! 📺</div>
+
+  <div id="remote">
+    <div id="pad"></div>
+    <div class="side">
+      <button class="bigbtn" id="chUp"><span class="ic">🔺</span>CH +</button>
+      <button class="bigbtn" id="chDown"><span class="ic">🔻</span>CH −</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>📺 Sabrina's TV Time!</h2>
+    <p>It's TV night at Bear's house, and <b>you</b> hold the remote! 🎮</p>
+    <p>One by one, friends ask for their favorite show. <b>Press the channel buttons</b> until the right show is on!</p>
+    <p>Match the <b>picture on the button</b> to the show they want — or flip with <b>CH + / CH −</b>!</p>
+    <p class="keyhint">8 fun shows: news, soccer, music, dinos, cooking, space, cartoons, and the ocean! 🌊</p>
+    <button id="startBtn">Turn on the TV! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const CHANNELS = [
+    { icon: '📰', name: 'News Time',     bg: 'linear-gradient(180deg,#e3f2fd,#bbdefb)', fg: '#0d47a1', extras: ['📅','🌎'] },
+    { icon: '⚽', name: 'Soccer Match',  bg: 'linear-gradient(180deg,#e8f5e9,#c8e6c9)', fg: '#1b5e20', extras: ['🥅','👟'] },
+    { icon: '🎵', name: 'Music Show',    bg: 'linear-gradient(180deg,#f3e5f5,#e1bee7)', fg: '#4a148c', extras: ['🎶','🎤'] },
+    { icon: '🦕', name: 'Dino Movie',    bg: 'linear-gradient(180deg,#ffe0b2,#ffcc80)', fg: '#4e342e', extras: ['🌴','🦖'] },
+    { icon: '🍳', name: 'Yummy Kitchen', bg: 'linear-gradient(180deg,#fff3e0,#ffe0b2)', fg: '#5d4037', extras: ['🥕','🧁'] },
+    { icon: '🚀', name: 'Space Trip',    bg: 'linear-gradient(180deg,#263238,#37474f)', fg: '#fff',    extras: ['⭐','🌙'] },
+    { icon: '🧸', name: 'Bear Cartoon',  bg: 'linear-gradient(180deg,#ffebee,#ffcdd2)', fg: '#b71c1c', extras: ['🍯','🎈'] },
+    { icon: '🌊', name: 'Ocean World',   bg: 'linear-gradient(180deg,#e0f7fa,#b2ebf2)', fg: '#004d40', extras: ['🐠','🐙'] },
+  ];
+
+  const VIEWERS = [
+    { em: '🧸', name: 'Bear',  ch: 4 },
+    { em: '🐰', name: 'Bunny', ch: 7 },
+    { em: '🐱', name: 'Kitty', ch: 8 },
+    { em: '🦖', name: 'Rex',   ch: 2 },
+    { em: '🐼', name: 'Panda', ch: 5 },
+  ];
+
+  const screenEl = document.getElementById('screen');
+  const showMain = document.getElementById('showMain');
+  const showName = document.getElementById('showName');
+  const chLabel = document.getElementById('chLabel');
+  const staticEl = document.getElementById('static');
+  const requestText = document.getElementById('requestText');
+  const hintEl = document.getElementById('hint');
+  const servedCountEl = document.getElementById('servedCount');
+  const couch = document.getElementById('couch');
+  const pad = document.getElementById('pad');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+
+  document.getElementById('servedTotal').textContent = VIEWERS.length;
+
+  let channel = 1;
+  let viewerIndex = 0;
+  let celebrating = false;
+  let notThisTimer = null;
+
+  function speak(text, pitch = 1.35) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.0; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  let audio = null;
+  function beep(freq = 620, dur = 0.07) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'square'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.1, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* no sound is fine */ }
+  }
+  function staticNoise() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const len = 0.16;
+      const buf = audio.createBuffer(1, audio.sampleRate * len, audio.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.25;
+      const src = audio.createBufferSource();
+      const g = audio.createGain();
+      g.gain.setValueAtTime(0.12, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + len);
+      src.buffer = buf; src.connect(g).connect(audio.destination);
+      src.start(t);
+    } catch (e) { /* no sound is fine */ }
+  }
+  function jingle() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      [523, 659, 784].forEach((f, i) => {
+        const o = audio.createOscillator(), g = audio.createGain();
+        o.type = 'triangle'; o.frequency.setValueAtTime(f, t + i * 0.09);
+        g.gain.setValueAtTime(0.14, t + i * 0.09);
+        g.gain.exponentialRampToValueAtTime(0.001, t + i * 0.09 + 0.3);
+        o.connect(g).connect(audio.destination);
+        o.start(t + i * 0.09); o.stop(t + i * 0.09 + 0.32);
+      });
+    } catch (e) { /* no sound is fine */ }
+  }
+
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800'];
+    for (let i = 0; i < 30; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  // ---------- channel pad ----------
+  CHANNELS.forEach((ch, i) => {
+    const b = document.createElement('button');
+    b.className = 'chbtn';
+    b.innerHTML = '<span class="num">' + (i + 1) + '</span><span class="ic">' + ch.icon + '</span>';
+    b.addEventListener('click', () => setChannel(i + 1));
+    pad.appendChild(b);
+  });
+  document.getElementById('chUp').addEventListener('click', () => setChannel(channel === CHANNELS.length ? 1 : channel + 1));
+  document.getElementById('chDown').addEventListener('click', () => setChannel(channel === 1 ? CHANNELS.length : channel - 1));
+
+  function setChannel(n) {
+    if (n === channel) { beep(500, 0.05); return; }
+    channel = n;
+    beep(620);
+    // quick static between channels
+    staticEl.classList.add('on');
+    staticNoise();
+    setTimeout(() => staticEl.classList.remove('on'), 260);
+    renderShow();
+    checkViewer();
+  }
+
+  function renderShow() {
+    const ch = CHANNELS[channel - 1];
+    screenEl.style.background = ch.bg;
+    showMain.textContent = ch.icon;
+    showName.textContent = ch.name;
+    showName.style.color = ch.fg;
+    chLabel.textContent = 'CH ' + channel;
+    // clear old floating extras
+    screenEl.querySelectorAll('.extra').forEach(e => e.remove());
+    ch.extras.forEach((e, i) => {
+      const s = document.createElement('span');
+      s.className = 'extra';
+      s.textContent = e;
+      s.style.left = (i === 0 ? '10%' : '72%');
+      s.style.top = (i === 0 ? '16%' : '58%');
+      s.style.animationDelay = (i * 0.7) + 's';
+      s.style.animationDuration = (2.4 + i * 0.8) + 's';
+      screenEl.appendChild(s);
+    });
+  }
+
+  // ---------- viewers ----------
+  function askViewer() {
+    const v = VIEWERS[viewerIndex];
+    const ch = CHANNELS[v.ch - 1];
+    requestText.innerHTML = v.em + ' <b>' + v.name + '</b> wants: <b>' + ch.icon + ' ' + ch.name + '</b>!';
+    speak(v.name + ' wants to watch the ' + ch.name + '!', 1.4);
+    hintEl.textContent = 'Find ' + v.name + "'s show on the remote! 🔍";
+  }
+
+  function checkViewer() {
+    if (celebrating || viewerIndex >= VIEWERS.length) return;
+    const v = VIEWERS[viewerIndex];
+    if (channel !== v.ch) {
+      // gentle nudge, but not too chatty
+      if (!notThisTimer) {
+        notThisTimer = setTimeout(() => { notThisTimer = null; }, 5000);
+        speak('Hmm, that is not my show!', 1.3);
+      }
+      return;
+    }
+    celebrating = true;
+    setTimeout(() => {
+      jingle();
+      burstConfetti();
+      const seat = document.createElement('span');
+      seat.textContent = v.em;
+      couch.appendChild(seat);
+      servedCountEl.textContent = viewerIndex + 1;
+      const ch = CHANNELS[v.ch - 1];
+      speak('Thank you! ' + ch.name + ' is my favorite show!', 1.45);
+      viewerIndex++;
+      celebrating = false;
+      if (viewerIndex >= VIEWERS.length) {
+        setTimeout(finale, 1400);
+      } else {
+        setTimeout(askViewer, 1200);
+      }
+    }, 700);
+  }
+
+  function finale() {
+    burstConfetti();
+    setTimeout(burstConfetti, 500);
+    setTimeout(burstConfetti, 1000);
+    card.innerHTML = `
+      <h2>🍿 TV Party Night! 📺</h2>
+      <p>Everyone is on the couch with popcorn, watching their favorite shows — thanks to you, <strong>Sabrina</strong>! 💙</p>
+      <p>Bear, Bunny, Kitty, Rex, and Panda give you <b>five stars</b>! ⭐⭐⭐⭐⭐</p>
+      <button id="againBtn">TV night again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', () => {
+      viewerIndex = 0;
+      servedCountEl.textContent = '0';
+      while (couch.children.length > 1) couch.lastChild.remove();
+      overlay.classList.add('hidden');
+      askViewer();
+    });
+    speak('TV party night! Everyone is happy! Thank you, Sabrina!', 1.4);
+  }
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    renderShow();
+    askViewer();
+  });
+})();
+</script>
+</body>
+</html>
