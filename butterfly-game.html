@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Butterfly Robot! 🦋🤖</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    user-select: none; touch-action: none;
+    background: #c8f0d0;
+  }
+  #view { position: absolute; inset: 0; display: block; }
+
+  #hud {
+    position: absolute; top: 10px; left: 0; right: 0; z-index: 5;
+    display: flex; justify-content: center; gap: 10px; pointer-events: none;
+  }
+  .chip {
+    background: rgba(255,255,255,0.85); border: 3px solid #ec407a; border-radius: 18px;
+    padding: 6px 18px; font-size: clamp(18px, 4.5vw, 28px); font-weight: bold; color: #ad1457;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.15);
+  }
+  #learn {
+    position: absolute; top: 66px; left: 50%; transform: translateX(-50%);
+    z-index: 5; max-width: 92%;
+    background: rgba(255,255,255,0.88); border: 3px solid #ba68c8; border-radius: 16px;
+    padding: 4px 16px; font-size: clamp(14px, 3.4vw, 19px); font-weight: bold; color: #6a1b9a;
+    text-align: center; pointer-events: none;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.12);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  a.home {
+    position: absolute; top: 12px; left: 12px; z-index: 6;
+    background: rgba(255,255,255,0.7); color: #ad1457; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold; pointer-events: auto;
+  }
+  #hint {
+    position: absolute; bottom: 18px; left: 0; right: 0; z-index: 5; text-align: center;
+    color: #6a1b9a; font-size: clamp(15px, 3.6vw, 20px); font-weight: bold; pointer-events: none;
+    text-shadow: 0 1px 3px rgba(255,255,255,0.8);
+  }
+  #factBtn {
+    position: absolute; right: 16px; bottom: 16px; z-index: 6;
+    width: clamp(64px, 14vw, 92px); height: clamp(64px, 14vw, 92px);
+    font-size: clamp(34px, 7vw, 50px); line-height: 1;
+    background: #ede7f6; border: 4px solid #9575cd; border-radius: 50%;
+    box-shadow: 0 5px 0 #5e35b1; cursor: pointer; pointer-events: auto;
+    font-family: inherit;
+  }
+  #factBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #5e35b1; }
+
+  #overlay {
+    position: absolute; inset: 0; z-index: 10;
+    background: rgba(74,20,140,0.45);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #fdf4ff; border: 4px solid #ce93d8; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 480px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #8e24aa; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #4a2c5e; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #ab47bc; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #6a1b9a;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #6a1b9a; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #9c64a6; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <div class="chip">🌸 <span id="flowerCount">0</span>/<span id="flowerTotal">10</span></div>
+  <div class="chip">⭐ <span id="starCount">0</span></div>
+</div>
+<div id="learn">🤖 Robot is ready to learn!</div>
+<div id="hint">👆 Move your finger — collect flowers to teach Robot!</div>
+<button id="factBtn" title="Robot says!">🤖</button>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>🦋 Sabrina's Butterfly Robot!</h2>
+    <p>Fly Sabrina the butterfly around the garden! 🌷</p>
+    <p>Collect <b>10 flowers</b> — every flower teaches <b>Robot 🤖</b> something new!</p>
+    <p>Bees 🐝 only tickle — nothing can hurt you!</p>
+    <p class="keyhint">Move with your finger 👆 or the arrow keys ⬆️⬇️⬅️➡️</p>
+    <button id="startBtn">Start Flying! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+  const flowerCountEl = document.getElementById('flowerCount');
+  const flowerTotalEl = document.getElementById('flowerTotal');
+  const starCountEl = document.getElementById('starCount');
+  const hintEl = document.getElementById('hint');
+  const learnEl = document.getElementById('learn');
+  const factBtn = document.getElementById('factBtn');
+
+  let W = 0, H = 0, dpr = 1;
+
+  const GOAL = 10;
+  const KEY_SPEED = 380; // px/s with arrow keys
+
+  const FL_EMOJI = ['🌸','🌼','🌻','🌷','🪷'];
+  const LESSONS = [
+    'flowers are pretty!',
+    'flowers smell nice!',
+    'butterflies love flowers!',
+    'bees go bzzz!',
+    'the sun helps flowers grow!',
+    'petals are soft!',
+    'flowers come in every color!',
+    'gardens are happy places!',
+    'Sabrina is a great teacher!',
+    'AI learns from friends like you!'
+  ];
+  const FACTS = [
+    'AI learns by looking at lots and lots of examples!',
+    'You can teach AI by saying yes or no!',
+    'AI is math that counts super duper fast!',
+    "Robot's favorite teacher is Sabrina!",
+    'AI practices and practices, just like you!'
+  ];
+
+  let butterfly, robot, flowers, stars, bees, clouds, deco, trees, bgB;
+  let learned, starsGot, won, winWait, winShown, wobble, tickleCooldown, lightTimer, running = false;
+  const input = { x: 0, y: 0, up: false, down: false, left: false, right: false };
+  const fx = [];
+
+  function sizeCanvas() {
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function speak(text, pitch = 1.3) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.0; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  // ---------- world ----------
+  function buildWorld() {
+    clouds = [];
+    for (let i = 0; i < 6; i++) {
+      clouds.push({ x: Math.random() * W, y: 40 + Math.random() * H * 0.25, s: 0.5 + Math.random() * 0.8, v: 8 + Math.random() * 14 });
+    }
+    deco = [];
+    for (let i = 0; i < 14; i++) {
+      deco.push({ x: Math.random() * W, y: H * 0.8 + 26 + Math.random() * Math.max(10, H * 0.2 - 44), e: FL_EMOJI[Math.floor(Math.random() * FL_EMOJI.length)], s: 0.7 + Math.random() * 0.6, ph: Math.random() * 6 });
+    }
+    trees = [];
+    const tx = [0.1, 0.46, 0.82];
+    for (const f of tx) {
+      trees.push({ x: W * f + (Math.random() - 0.5) * 60, e: Math.random() < 0.5 ? '🌳' : '🌲', s: 0.9 + Math.random() * 0.4 });
+    }
+    bgB = [];
+    for (let i = 0; i < 3; i++) {
+      bgB.push({ x: Math.random() * W, y: H * 0.2 + Math.random() * H * 0.4, v: (12 + Math.random() * 16) * (Math.random() < 0.5 ? -1 : 1), ph: Math.random() * 6 });
+    }
+    bees = [];
+    for (let i = 0; i < 4; i++) {
+      bees.push({ x: Math.random() * W, y0: 150 + Math.random() * (H * 0.5), y: 0, v: (30 + Math.random() * 40) * (Math.random() < 0.5 ? -1 : 1), ph: Math.random() * 6 });
+    }
+  }
+
+  function freeSpot(minSelf, minOther, others) {
+    for (let k = 0; k < 40; k++) {
+      const x = 70 + Math.random() * (W - 140);
+      const y = 150 + Math.random() * (H - 240);
+      if (butterfly && Math.hypot(x - butterfly.x, y - butterfly.y) < minSelf) continue;
+      let ok = true;
+      for (const o of others) if (Math.hypot(x - o.x, y - o.y) < minOther) { ok = false; break; }
+      if (ok) return { x, y };
+    }
+    return { x: 70 + Math.random() * (W - 140), y: 150 + Math.random() * (H - 240) };
+  }
+  function spawnFlower() {
+    const p = freeSpot(150, 100, flowers.concat(stars));
+    flowers.push({ x: p.x, y: p.y, e: FL_EMOJI[Math.floor(Math.random() * FL_EMOJI.length)], bob: Math.random() * 6 });
+  }
+  function spawnStar() {
+    const p = freeSpot(150, 100, stars.concat(flowers));
+    stars.push({ x: p.x, y: p.y, bob: Math.random() * 6 });
+  }
+  function topUp() {
+    while (flowers.length + learned < GOAL && flowers.length < 3) spawnFlower();
+    while (stars.length < 2) spawnStar();
+  }
+
+  function resetGame() {
+    buildWorld();
+    butterfly = { x: W / 2, y: H * 0.55 };
+    robot = { x: W / 2 - 90, y: H * 0.55 + 12 };
+    input.x = butterfly.x; input.y = butterfly.y;
+    flowers = []; stars = [];
+    learned = 0; starsGot = 0;
+    won = false; winWait = 0; winShown = false;
+    wobble = 0; tickleCooldown = 0; lightTimer = 0;
+    flowerTotalEl.textContent = GOAL;
+    flowerCountEl.textContent = '0';
+    starCountEl.textContent = '0';
+    learnEl.textContent = '🤖 Robot is ready to learn!';
+    hintEl.classList.remove('hidden');
+    topUp();
+  }
+
+  // ---------- loop ----------
+  let lastT = 0;
+  function tick(t) {
+    if (!running) return;
+    const dt = Math.min(0.04, (t - lastT) / 1000 || 0);
+    lastT = t;
+    update(dt);
+    render();
+    requestAnimationFrame(tick);
+  }
+
+  function sparkle(x, y, ch) { for (let i = 0; i < 7; i++) fx.push({ x, y, ch, vx: (Math.random() - 0.5) * 130, vy: -70 - Math.random() * 90, life: 0.8, t: 0 }); }
+  function popText(txt, x, y, color) { fx.push({ x, y, txt, color, vx: 0, vy: -60, life: 0.9, t: 0 }); }
+  function updateFx(dt) {
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const p = fx[i]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.t >= p.life) fx.splice(i, 1);
+    }
+  }
+
+  function moveBee(b, dt, now) {
+    b.x += b.v * dt;
+    if (b.x < -60) b.x = W + 60;
+    if (b.x > W + 60) b.x = -60;
+    b.y = b.y0 + Math.sin(now / 900 + b.ph) * 30;
+  }
+
+  function update(dt) {
+    const now = performance.now();
+    wobble = Math.max(0, wobble - dt);
+    tickleCooldown = Math.max(0, tickleCooldown - dt);
+    lightTimer = Math.max(0, lightTimer - dt);
+
+    if (won) {
+      winWait -= dt;
+      if (Math.random() < 0.35) {
+        fx.push({ x: Math.random() * W, y: 40 + Math.random() * H * 0.4, ch: ['✨','⭐','🌸','🎈'][Math.floor(Math.random() * 4)], vx: (Math.random() - 0.5) * 60, vy: 60 + Math.random() * 80, life: 1.4, t: 0 });
+      }
+      for (const b of bees) moveBee(b, dt, now);
+      for (const c of clouds) { c.x -= c.v * dt; if (c.x < -120) c.x = W + 120; }
+      updateFx(dt);
+      if (winWait <= 0 && !winShown) { winShown = true; showWin(); }
+      return;
+    }
+
+    // keyboard moves the target; dragging sets it directly
+    const sp = KEY_SPEED * (wobble > 0 ? 0.55 : 1) * dt;
+    if (input.left)  input.x -= sp;
+    if (input.right) input.x += sp;
+    if (input.up)    input.y -= sp;
+    if (input.down)  input.y += sp;
+    input.x = Math.max(46, Math.min(W - 46, input.x));
+    input.y = Math.max(110, Math.min(H - 46, input.y));
+    butterfly.x += (input.x - butterfly.x) * Math.min(1, 9 * dt);
+    butterfly.y += (input.y - butterfly.y) * Math.min(1, 9 * dt);
+    butterfly.x = Math.max(46, Math.min(W - 46, butterfly.x));
+    butterfly.y = Math.max(110, Math.min(H - 46, butterfly.y));
+
+    // robot floats along behind, learning!
+    robot.x += (butterfly.x - 78 - robot.x) * Math.min(1, 3.2 * dt);
+    robot.y += (butterfly.y + 12 - robot.y) * Math.min(1, 3.2 * dt);
+
+    // collect flowers → robot learns something new
+    for (let i = flowers.length - 1; i >= 0; i--) {
+      const f = flowers[i];
+      if (Math.hypot(butterfly.x - f.x, butterfly.y - f.y) < 52) {
+        flowers.splice(i, 1);
+        learned++;
+        flowerCountEl.textContent = learned;
+        learnEl.textContent = '🤖 learned: ' + LESSONS[learned - 1];
+        sparkle(f.x, f.y, '✨');
+        popText('+1 🌸', f.x, f.y - 12, '#c2185b');
+        lightTimer = 1.0;
+        speak('Robot learned: ' + LESSONS[learned - 1], 1.4);
+        if (learned === 5) setTimeout(() => speak('Halfway there! Robot is getting so smart!', 1.4), 2600);
+        if (learned >= GOAL) { won = true; winWait = 1.4; }
+      }
+    }
+
+    // bonus stars, just for sparkle
+    for (let i = stars.length - 1; i >= 0; i--) {
+      const s = stars[i];
+      if (Math.hypot(butterfly.x - s.x, butterfly.y - s.y) < 50) {
+        stars.splice(i, 1);
+        starsGot++;
+        starCountEl.textContent = starsGot;
+        sparkle(s.x, s.y, '⭐');
+        popText('+1 ⭐', s.x, s.y - 12, '#f9a825');
+        speak('Shiny star!', 1.5);
+      }
+    }
+    topUp();
+
+    // bees buzz around — they only tickle!
+    for (const b of bees) {
+      moveBee(b, dt, now);
+      if (tickleCooldown <= 0 && Math.hypot(butterfly.x - b.x, butterfly.y - b.y) < 46) {
+        wobble = 1.1; tickleCooldown = 2.5;
+        popText('Bzzz! Tickles!', b.x, b.y - 26, '#f57f17');
+        for (let i = 0; i < 6; i++) fx.push({ x: b.x, y: b.y, ch: '💛', vx: (Math.random() - 0.5) * 140, vy: -90 - Math.random() * 70, life: 0.8, t: 0 });
+        speak('Bzzz! Just tickles!', 1.5);
+      }
+    }
+
+    // clouds and background butterflies drift
+    for (const c of clouds) { c.x -= c.v * dt; if (c.x < -120) c.x = W + 120; }
+    for (const b of bgB) { b.x += b.v * dt; if (b.x > W + 60) b.x = -60; if (b.x < -60) b.x = W + 60; }
+
+    updateFx(dt);
+  }
+
+  // ---------- render ----------
+  function glow(color, x, y) {
+    ctx.globalAlpha = 0.3; ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(x, y, 34, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  function render() {
+    const now = performance.now();
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+
+    // sky
+    const sky = ctx.createLinearGradient(0, 0, 0, H * 0.8);
+    sky.addColorStop(0, '#81d4fa'); sky.addColorStop(1, '#e1f5fe');
+    ctx.fillStyle = sky; ctx.fillRect(0, 0, W, H * 0.8);
+
+    // sun
+    ctx.fillStyle = '#fff59d';
+    ctx.beginPath(); ctx.arc(70, 70, 40, 0, Math.PI * 2); ctx.fill();
+    ctx.globalAlpha = 0.4; ctx.beginPath(); ctx.arc(70, 70, 54, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1;
+
+    // clouds
+    for (const c of clouds) {
+      ctx.font = (42 * c.s) + 'px serif';
+      ctx.globalAlpha = 0.92;
+      ctx.fillText('☁️', c.x, c.y);
+    }
+    ctx.globalAlpha = 1;
+
+    // grass
+    const grass = ctx.createLinearGradient(0, H * 0.8, 0, H);
+    grass.addColorStop(0, '#8bc34a'); grass.addColorStop(1, '#4caf50');
+    ctx.fillStyle = grass; ctx.fillRect(0, H * 0.8, W, H * 0.2);
+
+    // trees at the top of the grass + little flowers in it
+    for (const t of trees) {
+      ctx.font = (46 * t.s) + 'px serif';
+      ctx.fillText(t.e, t.x, H * 0.8 - 22 * t.s);
+    }
+    for (const d of deco) {
+      ctx.font = (26 * d.s) + 'px serif';
+      ctx.fillText(d.e, d.x, d.y + Math.sin(now / 500 + d.ph) * 2);
+    }
+
+    // background butterfly friends
+    for (const b of bgB) {
+      ctx.font = '26px serif';
+      ctx.globalAlpha = 0.65;
+      ctx.fillText('🦋', b.x, b.y + Math.sin(now / 260 + b.ph) * 10);
+    }
+    ctx.globalAlpha = 1;
+
+    // bonus stars + flowers
+    for (const s of stars) {
+      const yy = s.y + Math.sin(now / 350 + s.bob) * 6;
+      glow('#fff59d', s.x, yy);
+      ctx.font = '38px serif'; ctx.fillText('⭐', s.x, yy);
+    }
+    for (const f of flowers) {
+      const yy = f.y + Math.sin(now / 350 + f.bob) * 6;
+      glow('#fff176', f.x, yy);
+      ctx.font = '42px serif'; ctx.fillText(f.e, f.x, yy);
+    }
+
+    // bees
+    for (const b of bees) {
+      ctx.font = '34px serif';
+      ctx.fillText('🐝', b.x, b.y + Math.sin(now / 120 + b.ph) * 3);
+    }
+
+    // robot (grows a little with every lesson!)
+    const rs = 1 + learned * 0.05;
+    ctx.save();
+    ctx.translate(robot.x, robot.y + Math.sin(now / 300) * 6);
+    ctx.scale(rs, rs);
+    ctx.font = '46px serif';
+    ctx.fillText('🤖', 0, 0);
+    if (lightTimer > 0) {
+      ctx.globalAlpha = Math.min(1, lightTimer * 1.4);
+      ctx.font = '30px serif';
+      ctx.fillText('💡', 8, -46);
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    // Sabrina the butterfly
+    ctx.save();
+    ctx.translate(butterfly.x, butterfly.y);
+    const tilt = Math.max(-0.35, Math.min(0.35, (input.x - butterfly.x) * 0.004));
+    ctx.rotate(tilt + Math.sin(now / 160) * 0.1 + (wobble > 0 ? Math.sin(wobble * 24) * 0.35 : 0));
+    ctx.font = '58px serif';
+    ctx.fillText('🦋', 0, 0);
+    ctx.restore();
+
+    // fx
+    for (const p of fx) {
+      const a = 1 - p.t / p.life;
+      ctx.globalAlpha = Math.max(0, a);
+      if (p.txt) {
+        ctx.font = 'bold 26px "Comic Sans MS", serif'; ctx.fillStyle = p.color || '#c2185b';
+        ctx.fillText(p.txt, p.x, p.y);
+      } else {
+        ctx.font = '24px serif';
+        ctx.fillText(p.ch, p.x, p.y);
+      }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---------- win ----------
+  function showWin() {
+    running = false;
+    hintEl.classList.add('hidden');
+    const msg = starsGot >= 8 ? 'WOW! Robot says you are the BEST teacher in the whole world! 🏆'
+              : 'Robot is so happy — you are an amazing AI teacher! 💜';
+    card.innerHTML = `
+      <h2>Robot is super smart! 🤖✨</h2>
+      <p>You collected all <strong>${GOAL} flowers</strong> and taught Robot <strong>${GOAL} brand-new things</strong>!${starsGot > 0 ? ` You also found <strong>${starsGot}</strong> bonus stars! ⭐` : ''}</p>
+      <p>${msg}</p>
+      <button id="againBtn">Fly again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', start);
+    speak('You did it! Robot learned everything! You are a super A I teacher!', 1.4);
+  }
+
+  function start() {
+    overlay.classList.add('hidden');
+    sizeCanvas();
+    resetGame();
+    running = true;
+    lastT = performance.now();
+    requestAnimationFrame(tick);
+    speak('Fly the butterfly and collect flowers to teach Robot!', 1.4);
+  }
+
+  // ---------- input: drag to fly ----------
+  function flyTo(e) {
+    input.x = Math.max(46, Math.min(W - 46, e.clientX));
+    input.y = Math.max(110, Math.min(H - 46, e.clientY));
+  }
+  canvas.addEventListener('pointerdown', e => { flyTo(e); e.preventDefault(); });
+  canvas.addEventListener('pointermove', e => { if (e.buttons || e.pointerType !== 'mouse') flyTo(e); });
+  canvas.addEventListener('pointercancel', () => {});
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') { input.up = true; e.preventDefault(); }
+    if (e.key === 'ArrowDown' || e.key === 's') { input.down = true; e.preventDefault(); }
+    if (e.key === 'ArrowLeft' || e.key === 'a') { input.left = true; e.preventDefault(); }
+    if (e.key === 'ArrowRight' || e.key === 'd') { input.right = true; e.preventDefault(); }
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') input.up = false;
+    if (e.key === 'ArrowDown' || e.key === 's') input.down = false;
+    if (e.key === 'ArrowLeft' || e.key === 'a') input.left = false;
+    if (e.key === 'ArrowRight' || e.key === 'd') input.right = false;
+  });
+
+  factBtn.addEventListener('pointerdown', e => e.stopPropagation());
+  factBtn.addEventListener('click', e => {
+    e.stopPropagation();
+    const f = FACTS[Math.floor(Math.random() * FACTS.length)];
+    speak(f, 0.9);
+    popText('Beep boop!', robot.x, robot.y - 50, '#5e35b1');
+    sparkle(robot.x, robot.y - 44, '💡');
+  });
+
+  window.addEventListener('resize', () => { sizeCanvas(); });
+
+  document.getElementById('startBtn').addEventListener('click', start);
+  sizeCanvas();
+})();
+</script>
+</body>
+</html>
