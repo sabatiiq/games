@@ -1,0 +1,436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Magic Piano! 🎹</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: linear-gradient(160deg, #ede7f6 0%, #fce4ec 55%, #e8eaf6 100%);
+    user-select: none; touch-action: manipulation;
+  }
+  body { min-height: 100vh; }
+  #app { max-width: 860px; margin: 0 auto; padding: 14px 12px 20px; }
+
+  a.home {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.9); color: #6a1b9a; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud { display: flex; justify-content: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.94); border: 4px solid #7c4dff; border-radius: 30px;
+    padding: 8px 20px; font-size: clamp(16px, 3.2vw, 24px); font-weight: bold; color: #4527a0;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  /* mode chips */
+  #modes { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
+  .mode {
+    font-family: inherit; font-weight: bold; cursor: pointer;
+    font-size: clamp(14px, 3vw, 20px);
+    background: #fff; color: #4527a0;
+    border: 3px solid #d1c4e9; border-radius: 18px; padding: 8px 14px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.12); transition: transform 0.1s;
+  }
+  .mode:active { transform: translateY(3px); box-shadow: 0 1px 0 rgba(0,0,0,0.12); }
+  .mode.active { background: #7c4dff; color: #fff; border-color: #4527a0; }
+
+  /* next-note hint row */
+  #nextRow {
+    display: flex; justify-content: center; align-items: flex-end; gap: 10px;
+    height: 58px; margin-bottom: 10px;
+  }
+  .next {
+    width: 44px; height: 44px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-weight: bold; font-size: clamp(15px, 3vw, 21px); color: #fff;
+    border: 3px solid rgba(255,255,255,0.9);
+    box-shadow: 0 3px 6px rgba(0,0,0,0.2);
+    opacity: 0.55;
+  }
+  .next.now {
+    width: 54px; height: 54px; opacity: 1;
+    animation: pulse 0.8s ease-in-out infinite alternate;
+  }
+  @keyframes pulse {
+    from { transform: scale(1);    box-shadow: 0 3px 6px rgba(0,0,0,0.2), 0 0 0 0 rgba(124,77,255,0.5); }
+    to   { transform: scale(1.15); box-shadow: 0 3px 6px rgba(0,0,0,0.2), 0 0 0 12px rgba(124,77,255,0); }
+  }
+
+  #hint {
+    text-align: center; margin: 4px 0 14px; min-height: 28px;
+    color: #4527a0; font-size: clamp(15px, 3.4vw, 20px); font-weight: bold;
+  }
+
+  /* the piano */
+  #pianoWrap {
+    background: linear-gradient(180deg, #5e35b1, #4527a0);
+    border-radius: 26px; padding: 18px 14px 22px;
+    box-shadow: 0 16px 40px rgba(69,39,160,0.4), inset 0 2px 6px rgba(255,255,255,0.3);
+    display: flex; justify-content: center;
+  }
+  #piano { display: flex; gap: 6px; width: 100%; max-width: 700px; }
+  .key {
+    flex: 1; height: clamp(180px, 38vh, 280px);
+    border: none; border-radius: 10px 10px 18px 18px;
+    cursor: pointer; position: relative;
+    font-family: inherit;
+    display: flex; flex-direction: column; align-items: center; justify-content: flex-end;
+    padding-bottom: 14px; gap: 4px;
+    box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), 0 4px 6px rgba(0,0,0,0.25);
+    transition: transform 0.06s;
+    color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+  }
+  .key:active, .key.pressed { transform: translateY(4px); box-shadow: inset 0 -4px 0 rgba(0,0,0,0.18); filter: brightness(1.25); }
+  .key .letter { font-size: clamp(18px, 4vw, 28px); font-weight: bold; }
+  .key .sol { font-size: clamp(11px, 2.4vw, 15px); font-weight: bold; opacity: 0.9; }
+  .key.glow { animation: glowPulse 0.7s ease-in-out infinite alternate; }
+  @keyframes glowPulse {
+    from { filter: brightness(1);    box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), 0 0 0 0 rgba(255,255,255,0.8); }
+    to   { filter: brightness(1.4);  box-shadow: inset 0 -8px 0 rgba(0,0,0,0.18), 0 0 22px 8px rgba(255,255,255,0.85); }
+  }
+  .key.wobble { animation: wobble 0.35s; }
+  @keyframes wobble {
+    25% { transform: translateX(-5px) rotate(-2deg); }
+    75% { transform: translateX(5px) rotate(2deg); }
+  }
+  .burst {
+    position: fixed; pointer-events: none; font-size: 22px; z-index: 60;
+    animation: popUp 0.7s ease-out forwards;
+  }
+  @keyframes popUp {
+    0%   { transform: translate(0, 0) scale(0.6); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+  }
+
+  #listenBtn {
+    display: none; margin: 14px auto 0; font-family: inherit; font-weight: bold;
+    font-size: clamp(16px, 3.4vw, 22px);
+    background: #ffeb3b; color: #5d4037; border: 4px solid #fbc02d;
+    border-radius: 18px; padding: 10px 24px; cursor: pointer;
+    box-shadow: 0 4px 0 #f57f17;
+  }
+  #listenBtn:active { transform: translateY(3px); box-shadow: 0 1px 0 #f57f17; }
+
+  /* overlay */
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(50,20,90,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #faf8ff; border: 4px solid #7c4dff; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 480px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #4527a0; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #37276b; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #7c4dff; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #4527a0;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #4527a0; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #8f7bb8; margin-top: 6px; }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+
+<div id="app">
+  <div id="hud">
+    <div class="chip">🎹 Sabrina's Magic Piano</div>
+    <div class="chip" id="progressChip" style="display:none">🎶 <span id="progress">0</span> / <span id="progressTotal">0</span></div>
+  </div>
+
+  <div id="modes">
+    <button class="mode active" data-mode="free">🎵 Free Play</button>
+    <button class="mode" data-song="twinkle">⭐ Twinkle Twinkle</button>
+    <button class="mode" data-song="mary">🐑 Mary Had a Lamb</button>
+    <button class="mode" data-song="birthday">🎂 Happy Birthday</button>
+  </div>
+
+  <div id="nextRow"></div>
+  <div id="hint">Tap the rainbow keys and make music! 🌈</div>
+
+  <div id="pianoWrap">
+    <div id="piano"></div>
+  </div>
+
+  <button id="listenBtn">🔊 Listen first ▶</button>
+</div>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>🎹 Sabrina's Magic Piano!</h2>
+    <p>A magic rainbow piano, just for you! 🌈 Every color is a different note!</p>
+    <p><b>Free Play</b>: tap any key and make pretty music!</p>
+    <p><b>Pick a song</b> ⭐🐑🎂 and the keys <b>glow</b> to teach you — follow the glowing key and play a real song!</p>
+    <p class="keyhint">Computer keys A S D F G H J K play the notes too! 🎹</p>
+    <button id="startBtn">Make music! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const KEYS = [
+    { note: 'C',  sol: 'Do',  freq: 261.63, color: '#e53935' },
+    { note: 'D',  sol: 'Re',  freq: 293.66, color: '#fb8c00' },
+    { note: 'E',  sol: 'Mi',  freq: 329.63, color: '#fdd835' },
+    { note: 'F',  sol: 'Fa',  freq: 349.23, color: '#43a047' },
+    { note: 'G',  sol: 'Sol', freq: 392.00, color: '#00acc1' },
+    { note: 'A',  sol: 'La',  freq: 440.00, color: '#1e88e5' },
+    { note: 'B',  sol: 'Si',  freq: 493.88, color: '#8e24aa' },
+    { note: 'C+', sol: 'Do',  freq: 523.25, color: '#ec407a' },
+  ];
+  const KEY_BY_NOTE = {};
+  KEYS.forEach(k => KEY_BY_NOTE[k.note] = k);
+
+  const SONGS = {
+    twinkle: { name: 'Twinkle Twinkle Little Star', notes:
+      'C C G G A A G F F E E D D C G G F F E E D G G F F E E D C C G G A A G F F E E D D C'.split(' ') },
+    mary: { name: 'Mary Had a Little Lamb', notes:
+      'E D C D E E E D D D E G G E D C D E E E D D E D C'.split(' ') },
+    birthday: { name: 'Happy Birthday', notes:
+      'C C D C F E C C D C G F C C+ A F E D'.split(' ') },
+  };
+
+  const piano = document.getElementById('piano');
+  const nextRow = document.getElementById('nextRow');
+  const hintEl = document.getElementById('hint');
+  const progressChip = document.getElementById('progressChip');
+  const progressEl = document.getElementById('progress');
+  const progressTotalEl = document.getElementById('progressTotal');
+  const listenBtn = document.getElementById('listenBtn');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+
+  let song = null;      // { key, name, notes, pos }
+  let demoPlaying = false;
+
+  function speak(text, pitch = 1.3) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.05; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  let audio = null;
+  function playNote(freq) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o1 = audio.createOscillator(), g = audio.createGain();
+      o1.type = 'triangle'; o1.frequency.setValueAtTime(freq, t);
+      const o2 = audio.createOscillator(), g2 = audio.createGain();
+      o2.type = 'sine'; o2.frequency.setValueAtTime(freq * 2, t);
+      g2.gain.setValueAtTime(0.06, t);
+      g.gain.setValueAtTime(0.22, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.95);
+      g2.gain.exponentialRampToValueAtTime(0.001, t + 0.7);
+      o1.connect(g).connect(audio.destination);
+      o2.connect(g2).connect(audio.destination);
+      o1.start(t); o1.stop(t + 1);
+      o2.start(t); o2.stop(t + 0.75);
+    } catch (e) { /* no sound is fine */ }
+  }
+
+  function sparkleBurst(x, y, ch) {
+    for (let i = 0; i < 6; i++) {
+      const s = document.createElement('span');
+      s.className = 'burst';
+      s.textContent = ch;
+      s.style.left = x + 'px'; s.style.top = y + 'px';
+      s.style.setProperty('--dx', ((Math.random() - 0.5) * 100) + 'px');
+      s.style.setProperty('--dy', (-40 - Math.random() * 60) + 'px');
+      document.body.appendChild(s);
+      setTimeout(() => s.remove(), 750);
+    }
+  }
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800','#ec407a'];
+    for (let i = 0; i < 36; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  // ---------- build the piano ----------
+  const keyEls = {};
+  KEYS.forEach(k => {
+    const b = document.createElement('button');
+    b.className = 'key';
+    b.style.background = 'linear-gradient(180deg,' + k.color + ' 78%,' + k.color + ' 100%)';
+    b.innerHTML = '<span class="letter">' + k.note + '</span><span class="sol">' + k.sol + '</span>';
+    b.addEventListener('pointerdown', e => pressKey(k.note, e));
+    piano.appendChild(b);
+    keyEls[k.note] = b;
+  });
+
+  function flashKey(note) {
+    const el = keyEls[note];
+    el.classList.add('pressed');
+    setTimeout(() => el.classList.remove('pressed'), 130);
+  }
+  function wobbleKey(note) {
+    const el = keyEls[note];
+    el.classList.remove('wobble');
+    void el.offsetWidth;
+    el.classList.add('wobble');
+    setTimeout(() => el.classList.remove('wobble'), 380);
+  }
+
+  function pressKey(note, e) {
+    const k = KEY_BY_NOTE[note];
+    playNote(k.freq);
+    flashKey(note);
+    if (e) sparkleBurst(e.clientX || 0, e.clientY || 0, '🎵');
+    else sparkleBurst(window.innerWidth / 2, window.innerHeight * 0.72, '🎵');
+
+    if (!song || demoPlaying) return;
+    if (note === song.notes[song.pos]) {
+      song.pos++;
+      progressEl.textContent = song.pos;
+      if (song.pos % 8 === 0 && song.pos < song.notes.length) speak(['Keep going!', 'So pretty!', 'You are doing great!'][Math.floor(Math.random() * 3)], 1.45);
+      if (song.pos >= song.notes.length) songComplete();
+      else renderNext();
+    } else {
+      wobbleKey(note);
+      hintEl.textContent = 'Try the glowing key! ✨';
+      if (!pressKey.lastNudge || Date.now() - pressKey.lastNudge > 6000) {
+        pressKey.lastNudge = Date.now();
+        speak('Try the glowing key!', 1.35);
+      }
+    }
+  }
+
+  // ---------- modes ----------
+  function setFree() {
+    song = null; demoPlaying = false;
+    progressChip.style.display = 'none';
+    listenBtn.style.display = 'none';
+    nextRow.innerHTML = '';
+    hintEl.textContent = 'Tap the rainbow keys and make music! 🌈';
+    document.querySelectorAll('.mode').forEach(m => m.classList.remove('active'));
+    document.querySelector('.mode[data-mode="free"]').classList.add('active');
+  }
+
+  function setSong(key) {
+    if (demoPlaying) return;
+    song = { key, name: SONGS[key].name, notes: SONGS[key].notes, pos: 0 };
+    progressChip.style.display = '';
+    progressEl.textContent = '0';
+    progressTotalEl.textContent = song.notes.length;
+    listenBtn.style.display = 'inline-block';
+    hintEl.textContent = 'Press the GLOWING key! ✨';
+    document.querySelectorAll('.mode').forEach(m => m.classList.remove('active'));
+    document.querySelector('.mode[data-song="' + key + '"]').classList.add('active');
+    renderNext();
+    speak('Let us play ' + song.name + '! Press the glowing key!', 1.35);
+  }
+
+  function renderNext() {
+    nextRow.innerHTML = '';
+    const upcoming = song.notes.slice(song.pos, song.pos + 5);
+    upcoming.forEach((n, i) => {
+      const d = document.createElement('div');
+      d.className = 'next' + (i === 0 ? ' now' : '');
+      d.style.background = KEY_BY_NOTE[n].color;
+      d.textContent = n;
+      nextRow.appendChild(d);
+      const el = KEY_BY_NOTE[n] && keyEls[n];
+      if (i === 0 && el) {
+        Object.values(keyEls).forEach(k => k.classList.remove('glow'));
+        el.classList.add('glow');
+      }
+    });
+    if (upcoming.length === 0) Object.values(keyEls).forEach(k => k.classList.remove('glow'));
+  }
+
+  document.querySelectorAll('.mode').forEach(m => {
+    m.addEventListener('click', () => {
+      if (m.dataset.mode === 'free') setFree();
+      else setSong(m.dataset.song);
+    });
+  });
+
+  // ---------- listen (demo) ----------
+  listenBtn.addEventListener('click', () => {
+    if (!song || demoPlaying) return;
+    demoPlaying = true;
+    hintEl.textContent = 'Listen… 👂';
+    speak('Listen!', 1.4);
+    song.notes.forEach((n, i) => {
+      setTimeout(() => {
+        playNote(KEY_BY_NOTE[n].freq);
+        flashKey(n);
+        if (i === song.notes.length - 1) {
+          demoPlaying = false;
+          song.pos = 0;
+          progressEl.textContent = '0';
+          renderNext();
+          hintEl.textContent = 'Your turn! Press the glowing key! ✨';
+          speak('Your turn! You can do it!', 1.4);
+        }
+      }, i * 480);
+    });
+  });
+
+  // ---------- song complete ----------
+  function songComplete() {
+    Object.values(keyEls).forEach(k => k.classList.remove('glow'));
+    burstConfetti();
+    setTimeout(burstConfetti, 500);
+    nextRow.innerHTML = '';
+    hintEl.textContent = '🎉 You played it! 🎉';
+    card.innerHTML = `
+      <h2>🎹 You played it! 🌟</h2>
+      <p>You performed <strong>${song.name}</strong> — all ${song.notes.length} notes!</p>
+      <p>Bear claps the loudest! 🧸👏</p>
+      <p><b>⭐⭐⭐</b></p>
+      <button id="againBtn">Play it again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', () => {
+      overlay.classList.add('hidden');
+      const key = song.key;
+      setSong(key);
+    });
+    speak('You played ' + song.name + '! Amazing piano playing!', 1.4);
+  }
+
+  // ---------- computer keyboard ----------
+  const KEYMAP = { a: 'C', s: 'D', d: 'E', f: 'F', g: 'G', h: 'A', j: 'B', k: 'C+' };
+  document.addEventListener('keydown', e => {
+    const n = KEYMAP[e.key.toLowerCase()];
+    if (n && !e.repeat) pressKey(n, null);
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    speak('Welcome to your magic piano! Tap the rainbow keys!', 1.3);
+  });
+})();
+</script>
+</body>
+</html>
