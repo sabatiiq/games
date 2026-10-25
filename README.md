@@ -44,6 +44,7 @@ A little collection of browser games for early learners (age 6 and up), made by 
 | 🏠⛵ Sabrina's Houseboat | Colors, matching, listening, steering & coordination (ages 3+) | [boathouse-game.html](boathouse-game.html) |
 | 📺🍿 Sabrina's TV Time | Channel numbers, matching shows to wishes, remote play | [tv-game.html](tv-game.html) |
 | 🦋🤖 Sabrina's Butterfly Robot | How AI learns — collect flowers to teach the robot, steering & coordination (ages 3+) | [butterfly-game.html](butterfly-game.html) |
+| 🎤💖 Sabrina's K-Pop Stage | Rhythm & timing, tapping coordination, counting combos | [kpop-game.html](kpop-game.html) |
 
 ## Tech
 

@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's K-Pop Stage! 🎤</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    user-select: none; touch-action: manipulation;
+    background: #1a0533;
+  }
+  #app { position: absolute; inset: 0; overflow: hidden; }
+
+  a.home {
+    position: absolute; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.85); color: #6a1b9a; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud {
+    position: absolute; top: 10px; left: 0; right: 0; z-index: 5;
+    display: flex; justify-content: center; gap: 10px; pointer-events: none;
+  }
+  .chip {
+    background: rgba(255,255,255,0.9); border: 3px solid #ec407a; border-radius: 18px;
+    padding: 6px 18px; font-size: clamp(18px, 4.5vw, 28px); font-weight: bold; color: #ad1457;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.25);
+  }
+
+  /* stage scene */
+  #stageBg {
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(circle at 50% 108%, rgba(236,64,122,0.85) 0%, rgba(156,39,176,0.5) 30%, transparent 62%),
+      radial-gradient(circle at 14% 0%, rgba(255,214,0,0.22) 0%, transparent 34%),
+      radial-gradient(circle at 86% 0%, rgba(64,196,255,0.22) 0%, transparent 34%),
+      linear-gradient(180deg, #2a0a4a 0%, #4a148c 55%, #7b1fa2 100%);
+    transition: background 0.3s;
+  }
+  #stageBg.cheer {
+    background:
+      radial-gradient(circle at 50% 108%, rgba(255,64,129,0.95) 0%, rgba(255,193,7,0.5) 30%, transparent 62%),
+      radial-gradient(circle at 14% 0%, rgba(255,214,0,0.35) 0%, transparent 34%),
+      radial-gradient(circle at 86% 0%, rgba(64,196,255,0.35) 0%, transparent 34%),
+      linear-gradient(180deg, #3d0a5c 0%, #6a1b9a 55%, #d81b60 100%);
+  }
+
+  /* spotlight sweep */
+  #spot {
+    position: absolute; top: -10%; left: 30%; width: 40%; height: 90%;
+    background: linear-gradient(180deg, rgba(255,255,255,0.16), transparent 75%);
+    clip-path: polygon(42% 0, 58% 0, 100% 100%, 0 100%);
+    animation: sweep 5s ease-in-out infinite alternate;
+    pointer-events: none;
+  }
+  @keyframes sweep {
+    from { transform: translateX(-26%) rotate(-6deg); }
+    to   { transform: translateX(26%)  rotate(6deg); }
+  }
+
+  /* the idol */
+  #idol {
+    position: absolute; left: 50%; bottom: 21%;
+    transform: translateX(-50%);
+    font-size: clamp(74px, 17vw, 120px);
+    filter: drop-shadow(0 8px 14px rgba(0,0,0,0.45));
+    z-index: 3;
+    animation: groove 1.15s ease-in-out infinite alternate;
+  }
+  @keyframes groove {
+    from { transform: translateX(-50%) rotate(-5deg) translateY(0); }
+    to   { transform: translateX(-50%) rotate(5deg)  translateY(-9px); }
+  }
+  #idol.spin { animation: spinDance 0.9s ease-in-out; }
+  @keyframes spinDance {
+    0%   { transform: translateX(-50%) rotate(0) scale(1); }
+    50%  { transform: translateX(-50%) rotate(360deg) scale(1.18); }
+    100% { transform: translateX(-50%) rotate(360deg) scale(1); }
+  }
+  #micNote {
+    position: absolute; left: calc(50% + clamp(40px, 9vw, 66px)); bottom: 34%;
+    font-size: clamp(24px, 5.5vw, 40px); z-index: 3; pointer-events: none;
+    animation: floatNote 1.6s ease-in-out infinite;
+  }
+  @keyframes floatNote {
+    0%, 100% { transform: translateY(0) rotate(-8deg); opacity: 0.95; }
+    50%      { transform: translateY(-16px) rotate(10deg); opacity: 0.6; }
+  }
+
+  /* note lanes */
+  #lanes {
+    position: absolute; left: 50%; transform: translateX(-50%);
+    bottom: 26%; width: min(94vw, 620px); height: 52%;
+    display: flex; gap: 4%;
+    z-index: 4;
+  }
+  .lane { position: relative; flex: 1; }
+  .note {
+    position: absolute; left: 50%; bottom: -70px;
+    transform: translateX(-50%);
+    font-size: clamp(44px, 9vw, 62px); line-height: 1;
+    cursor: pointer; z-index: 5;
+    animation: rise 3s linear forwards;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4));
+  }
+  .note.gold { font-size: clamp(50px, 10vw, 70px); filter: drop-shadow(0 0 12px #ffd54f) drop-shadow(0 4px 8px rgba(0,0,0,0.4)); }
+  @keyframes rise {
+    0%   { bottom: -70px; opacity: 1; }
+    85%  { opacity: 1; }
+    100% { bottom: 105%; opacity: 0.1; }
+  }
+  .burst {
+    position: absolute; pointer-events: none; font-size: 24px; z-index: 6;
+    animation: popUp 0.7s ease-out forwards;
+  }
+  @keyframes popUp {
+    0%   { transform: translate(0, 0) scale(0.6); opacity: 1; }
+    100% { transform: translate(var(--dx), var(--dy)) scale(1.4); opacity: 0; }
+  }
+
+  /* crowd */
+  #crowd {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 17%;
+    display: flex; justify-content: center; align-items: flex-end; gap: 3%;
+    z-index: 2; pointer-events: none;
+  }
+  #crowd span { font-size: clamp(30px, 7vw, 52px); animation: wave 0.9s ease-in-out infinite alternate; }
+  @keyframes wave {
+    from { transform: translateY(4px); }
+    to   { transform: translateY(-10px) rotate(-6deg); }
+  }
+
+  #hint {
+    position: absolute; bottom: 4px; left: 0; right: 0; z-index: 7; text-align: center;
+    color: #f8bbd0; font-size: clamp(13px, 3vw, 18px); font-weight: bold;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.8); pointer-events: none;
+  }
+
+  #danceBtn {
+    position: absolute; right: 16px; bottom: 16px; z-index: 8;
+    width: clamp(64px, 14vw, 92px); height: clamp(64px, 14vw, 92px);
+    font-size: clamp(30px, 6.5vw, 46px); line-height: 1;
+    background: #ffeb3b; border: 4px solid #fbc02d; border-radius: 50%;
+    box-shadow: 0 5px 0 #f57f17; cursor: pointer; pointer-events: auto;
+    font-family: inherit;
+  }
+  #danceBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #f57f17; }
+
+  /* overlay */
+  #overlay {
+    position: absolute; inset: 0; z-index: 30;
+    background: rgba(20,5,40,0.6);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #fdf4ff; border: 4px solid #d500f9; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 480px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #7b1fa2; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #45185c; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #d500f9; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #7b1fa2;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #7b1fa2; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #9a6ab0; margin-top: 6px; }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+<div id="app">
+  <div id="stageBg"></div>
+  <div id="spot"></div>
+
+  <div id="hud">
+    <div class="chip">🎵 Combo <span id="combo">0</span></div>
+    <div class="chip">⭐ <span id="gold">0</span></div>
+  </div>
+
+  <div id="idol">🧝‍♀️🎤</div>
+  <div id="micNote">🎵</div>
+
+  <div id="lanes">
+    <div class="lane" id="lane0"></div>
+    <div class="lane" id="lane1"></div>
+    <div class="lane" id="lane2"></div>
+  </div>
+
+  <div id="crowd"></div>
+  <div id="hint">💖 Tap the hearts while they float up! ⭐</div>
+  <button id="danceBtn" title="Dance!">💃</button>
+
+  <div id="overlay">
+    <div class="card" id="card">
+      <h2>🎤 Sabrina's K-Pop Stage!</h2>
+      <p>Tonight, <b>YOU</b> are the K-pop star! 🌟 The crowd is ready and the stage is glowing!</p>
+      <p><b>Tap the hearts 💖</b> as they float up from the stage — every tap plays a note of your song!</p>
+      <p>Catch the golden stars ⭐ for extra sparkle, build a big <b>combo</b>, and press 💃 to dance!</p>
+      <p class="keyhint">No wrong moves on this stage — every tap sounds pretty! 💖</p>
+      <button id="startBtn">On stage! ▶</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const stageBg = document.getElementById('stageBg');
+  const idol = document.getElementById('idol');
+  const crowd = document.getElementById('crowd');
+  const lanes = [document.getElementById('lane0'), document.getElementById('lane1'), document.getElementById('lane2')];
+  const comboEl = document.getElementById('combo');
+  const goldEl = document.getElementById('gold');
+  const hintEl = document.getElementById('hint');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+  const danceBtn = document.getElementById('danceBtn');
+
+  const TOTAL_NOTES = 36;
+  const HEARTS = ['💖','💗','💞','🩷','💜'];
+
+  let combo = 0, bestCombo = 0, gold = 0, spawned = 0, activeNotes = 0;
+  let running = false;
+
+  function speak(text, pitch = 1.4) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.05; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  let audio = null;
+  function pluck(freq) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.18, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.35);
+      o.connect(g).connect(audio.destination);
+      o.start(t); o.stop(t + 0.37);
+    } catch (e) { /* no sound is fine */ }
+  }
+  function chord() {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => pluck(f), i * 40));
+  }
+  function sparkleBurst(x, y, ch) {
+    for (let i = 0; i < 6; i++) {
+      const s = document.createElement('span');
+      s.className = 'burst';
+      s.textContent = ch;
+      s.style.left = x + 'px'; s.style.top = y + 'px';
+      s.style.setProperty('--dx', ((Math.random() - 0.5) * 110) + 'px');
+      s.style.setProperty('--dy', (-40 - Math.random() * 60) + 'px');
+      document.getElementById('app').appendChild(s);
+      setTimeout(() => s.remove(), 750);
+    }
+  }
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800','#ec407a'];
+    for (let i = 0; i < 34; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+  function crowdCheer() {
+    stageBg.classList.add('cheer');
+    setTimeout(() => stageBg.classList.remove('cheer'), 450);
+    for (let i = 0; i < 3; i++) {
+      const x = 8 + Math.random() * 84, y = window.innerHeight * (0.7 + Math.random() * 0.16);
+      sparkleBurst(window.innerWidth * x / 100, y, ['🎉','🙌','💫'][Math.floor(Math.random() * 3)]);
+    }
+  }
+
+  // build the waving crowd
+  for (let i = 0; i < 12; i++) {
+    const s = document.createElement('span');
+    s.textContent = ['🙌','🙋','🧑‍🎤','🙆'][i % 4];
+    s.style.animationDelay = (i * 0.12) + 's';
+    s.style.animationDuration = (0.8 + (i % 3) * 0.15) + 's';
+    crowd.appendChild(s);
+  }
+
+  // ---------- notes ----------
+  function spawnNote() {
+    if (!running) return;
+    const lane = lanes[Math.floor(Math.random() * lanes.length)];
+    const isGold = Math.random() < 0.12;
+    const n = document.createElement('div');
+    n.className = 'note' + (isGold ? ' gold' : '');
+    n.textContent = isGold ? '⭐' : HEARTS[Math.floor(Math.random() * HEARTS.length)];
+    lane.appendChild(n);
+    activeNotes++;
+
+    n.addEventListener('pointerdown', e => {
+      if (!running) return;
+      combo++;
+      if (combo > bestCombo) bestCombo = combo;
+      comboEl.textContent = combo;
+      if (isGold) {
+        gold++; goldEl.textContent = gold;
+        chord(); burstConfetti();
+        sparkleBurst(e.clientX, e.clientY, '🌟');
+        speak('Golden star!', 1.5);
+      } else {
+        const scale = [523, 587, 659, 784, 880];
+        pluck(scale[Math.floor(Math.random() * scale.length)]);
+        sparkleBurst(e.clientX, e.clientY, ['✨','💖','🎵'][Math.floor(Math.random() * 3)]);
+      }
+      if (combo % 10 === 0) {
+        crowdCheer();
+        speak(['Wow! ' + combo + ' in a row!', 'Amazing combo!', 'The crowd loves you!', 'You are a superstar!'][Math.floor(Math.random() * 4)], 1.45);
+      }
+      n.remove();
+      activeNotes--;
+    });
+
+    n.addEventListener('animationend', () => {
+      n.remove();
+      activeNotes--;
+      if (running) { combo = 0; comboEl.textContent = '0'; }
+    });
+  }
+
+  function startShow() {
+    // spawn notes on a beat with a little swing
+    let i = 0;
+    const beat = () => {
+      if (!running || i >= TOTAL_NOTES) return;
+      spawnNote();
+      i++;
+      const swing = Math.random() < 0.22 ? 700 : 0;
+      setTimeout(beat, 1150 + Math.random() * 350 + swing);
+    };
+    beat();
+    // finale after the last note has floated away
+    setTimeout(() => {
+      if (running) finale();
+    }, TOTAL_NOTES * 1500 + 3600);
+  }
+
+  function finale() {
+    running = false;
+    hintEl.textContent = '';
+    burstConfetti();
+    setTimeout(burstConfetti, 500);
+    setTimeout(burstConfetti, 1000);
+    crowdCheer();
+    const msg = bestCombo >= 25 ? 'A PERFECT concert — the best K-pop star ever! 🌟'
+              : bestCombo >= 12 ? 'What an amazing show! The crowd is cheering! 🎉'
+              : 'The crowd loved your concert! 💖';
+    card.innerHTML = `
+      <h2>🎤 What a concert! 🌟</h2>
+      <p>Your best combo was <strong>${bestCombo}</strong> hearts in a row, and you caught <strong>${gold}</strong> golden stars! ⭐</p>
+      <p>${msg}</p>
+      <button id="againBtn">Encore! ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', start);
+    speak('What a concert! The crowd is cheering! Encore!', 1.4);
+  }
+
+  danceBtn.addEventListener('click', () => {
+    if (!running) return;
+    idol.classList.remove('spin');
+    void idol.offsetWidth;
+    idol.classList.add('spin');
+    crowdCheer();
+    pluck(392); setTimeout(() => pluck(523), 90); setTimeout(() => pluck(659), 180);
+    speak("Let's dance!", 1.5);
+  });
+
+  function start() {
+    overlay.classList.add('hidden');
+    combo = 0; bestCombo = 0; gold = 0;
+    comboEl.textContent = '0'; goldEl.textContent = '0';
+    lanes.forEach(l => l.innerHTML = '');
+    running = true;
+    speak('Sabrina is on stage! Tap the hearts and sing along!', 1.35);
+    setTimeout(startShow, 900);
+  }
+
+  document.getElementById('startBtn').addEventListener('click', start);
+})();
+</script>
+</body>
+</html>
