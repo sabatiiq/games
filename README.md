@@ -50,6 +50,7 @@ A little collection of browser games for early learners (age 6 and up), made by 
 | ➕🍎 Sabrina's Plus Plus | Visual addition within 20, counting groups, number sentences | [plus-game.html](plus-game.html) |
 | 🧸➕ Sabrina's Toy Plus Plus | Visual addition with toys, counting groups, number sentences | [toy-plus-game.html](toy-plus-game.html) |
 | 🏠👨‍👩‍👧‍👦 Sabrina's Family House | Family & room words, drag & drop, pretend play, listening | [family-house-game.html](family-house-game.html) |
+| 🏥🩺 Sabrina's Little Hospital | Pretend play, sequencing steps, empathy, drag & drop | [hospital-game.html](hospital-game.html) |
 
 ## Tech
 
