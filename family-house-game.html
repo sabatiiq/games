@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Family House! 🏠</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: linear-gradient(180deg, #b3e5fc 0%, #e1f5fe 40%, #dcedc8 100%);
+    user-select: none; touch-action: none;
+  }
+  body { min-height: 100vh; }
+  #app { max-width: 860px; margin: 0 auto; padding: 14px 12px 16px; }
+
+  a.home {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.9); color: #b71c1c; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.94); border: 4px solid #b71c1c; border-radius: 30px;
+    padding: 8px 20px; font-size: clamp(16px, 3.2vw, 24px); font-weight: bold; color: #b71c1c;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  /* task banner */
+  #task {
+    display: flex; justify-content: center; align-items: center; gap: 10px; flex-wrap: wrap;
+    background: rgba(255,255,255,0.94); border: 4px solid #ffb300; border-radius: 22px;
+    padding: 10px 14px; margin-bottom: 12px; text-align: center;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.12);
+  }
+  #taskText { font-size: clamp(15px, 3.2vw, 22px); font-weight: bold; color: #6d4c00; }
+  #doneStar { font-size: clamp(20px, 4vw, 28px); }
+  #diceBtn {
+    font-family: inherit; font-weight: bold; cursor: pointer;
+    font-size: clamp(15px, 3vw, 20px);
+    background: #ffb300; color: #5d4037;
+    border: 3px solid #ff8f00; border-radius: 14px; padding: 6px 12px;
+    box-shadow: 0 3px 0 #ef6c00;
+  }
+  #diceBtn:active { transform: translateY(3px); box-shadow: 0 0 0 #ef6c00; }
+
+  /* the dollhouse */
+  #house {
+    position: relative;
+    border-radius: 18px 18px 10px 10px;
+    background: #fce4ec;
+    border: 6px solid #b71c1c;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+    padding: 10px;
+  }
+  #roof {
+    height: 64px; margin: 0 4px;
+    background: #b71c1c;
+    clip-path: polygon(50% 0, 100% 100%, 0 100%);
+    display: flex; align-items: flex-end; justify-content: center;
+    filter: drop-shadow(0 6px 6px rgba(0,0,0,0.2));
+  }
+  #roofSign {
+    font-size: clamp(13px, 2.6vw, 18px); font-weight: bold; color: #fff;
+    background: rgba(0,0,0,0.25); border-radius: 10px; padding: 2px 12px;
+    margin-bottom: 6px;
+  }
+  #rooms {
+    display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+    gap: 10px; height: clamp(340px, 52vh, 470px);
+  }
+  .room {
+    position: relative; border-radius: 14px; overflow: hidden;
+    border: 4px solid rgba(0,0,0,0.12);
+    transition: box-shadow 0.2s, border-color 0.2s;
+  }
+  .room.kitchen     { background: linear-gradient(180deg, #fff3e0, #ffe0b2); }
+  .room.living      { background: linear-gradient(180deg, #e3f2fd, #bbdefb); }
+  .room.bedroom     { background: linear-gradient(180deg, #f3e5f5, #e1bee7); }
+  .room.playroom    { background: linear-gradient(180deg, #e8f5e9, #c8e6c9); }
+  .room .furniture {
+    position: absolute; font-size: clamp(34px, 7vw, 56px); line-height: 1;
+    opacity: 0.9; pointer-events: none;
+  }
+  .room .roomLabel {
+    position: absolute; top: 6px; left: 8px;
+    font-size: clamp(12px, 2.6vw, 18px); font-weight: bold; color: #4e342e;
+    background: rgba(255,255,255,0.85); border-radius: 10px; padding: 2px 10px;
+    pointer-events: none;
+  }
+  .room.highlight { border-color: #ffb300; box-shadow: inset 0 0 0 4px #ffb300; }
+
+  /* family members */
+  .person {
+    position: absolute; z-index: 20;
+    display: flex; flex-direction: column; align-items: center;
+    cursor: grab; touch-action: none;
+  }
+  .person .em {
+    font-size: clamp(38px, 8vw, 58px); line-height: 1;
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.35));
+    pointer-events: none;
+  }
+  .person .pname {
+    font-size: clamp(10px, 2.2vw, 14px); font-weight: bold; color: #4e342e;
+    background: rgba(255,255,255,0.92); border-radius: 8px; padding: 0 8px;
+    pointer-events: none;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+  }
+  .person.dragging { cursor: grabbing; z-index: 40; }
+  .person.dragging .em { transform: scale(1.25); filter: drop-shadow(0 10px 12px rgba(0,0,0,0.45)); }
+  .person .bubble {
+    position: absolute; top: -34px; left: 50%; transform: translateX(-50%);
+    background: #fff; color: #4e342e; font-weight: bold;
+    font-size: clamp(11px, 2.4vw, 15px);
+    border: 3px solid #ffb300; border-radius: 14px;
+    padding: 3px 10px; white-space: nowrap;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    z-index: 5;
+  }
+  .person .bubble.show { opacity: 1; }
+
+  #hint {
+    text-align: center; margin-top: 12px;
+    color: #b71c1c; font-size: clamp(15px, 3.4vw, 20px); font-weight: bold;
+  }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(90,20,20,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #fffaf5; border: 4px solid #b71c1c; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 500px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: clamp(25px, 6.5vw, 40px); color: #b71c1c; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #5c2a16; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #d84315; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #8d2b0b;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #8d2b0b; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #b9826c; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+
+<div id="app">
+  <div id="hud">
+    <div class="chip">🏠 Sabrina's Family House</div>
+    <div class="chip">⭐ <span id="stars">0</span></div>
+  </div>
+
+  <div id="task">
+    <div id="taskText">Drag the family anywhere — or roll a task! 🎲</div>
+    <span id="doneStar"></span>
+    <button id="diceBtn">🎲 Task!</button>
+  </div>
+
+  <div id="house">
+    <div id="roof"><div id="roofSign">👨‍👩‍👧‍👦 The Family House</div></div>
+    <div id="rooms">
+      <div class="room kitchen" data-room="kitchen">
+        <span class="roomLabel">🍳 Kitchen</span>
+        <span class="furniture" style="left:8%; top:52%">🍳</span>
+        <span class="furniture" style="right:10%; bottom:8%">🧊</span>
+      </div>
+      <div class="room living" data-room="living">
+        <span class="roomLabel">🛋️ Living Room</span>
+        <span class="furniture" style="left:8%; bottom:8%">🛋️</span>
+        <span class="furniture" style="right:10%; top:38%">📺</span>
+      </div>
+      <div class="room bedroom" data-room="bedroom">
+        <span class="roomLabel">🛏️ Bedroom</span>
+        <span class="furniture" style="left:8%; bottom:8%">🛏️</span>
+        <span class="furniture" style="right:10%; top:40%">🧸</span>
+      </div>
+      <div class="room playroom" data-room="playroom">
+        <span class="roomLabel">🧸 Playroom</span>
+        <span class="furniture" style="left:8%; bottom:8%">🪁</span>
+        <span class="furniture" style="right:10%; top:40%">🎲</span>
+      </div>
+    </div>
+
+    <!-- family members (draggable) -->
+    <div class="person" data-name="Dad"><div class="bubble"></div><div class="em">👨</div><div class="pname">Dad</div></div>
+    <div class="person" data-name="Mom"><div class="bubble"></div><div class="em">👩</div><div class="pname">Mom</div></div>
+    <div class="person" data-name="Brother"><div class="bubble"></div><div class="em">👦</div><div class="pname">Brother</div></div>
+    <div class="person" data-name="Sister"><div class="bubble"></div><div class="em">👧</div><div class="pname">Sister</div></div>
+    <div class="person" data-name="Baby"><div class="bubble"></div><div class="em">👶</div><div class="pname">Baby</div></div>
+  </div>
+
+  <div id="hint">👆 Drag the family into any room — everyone says something there! 🗣️</div>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <h2>🏠 Sabrina's Family House!</h2>
+    <p>Welcome to the family dollhouse! 👨‍👩‍👧‍👦 Dad, Mom, Brother, Sister, and Baby live here!</p>
+    <p><b>Hold and drag</b> anyone into any room — the Kitchen 🍳, Living Room 🛋️, Bedroom 🛏️ or Playroom 🧸!</p>
+    <p>Everyone says something funny when they arrive! And roll the 🎲 for special tasks — earn stars! ⭐</p>
+    <p class="keyhint">You are the boss of the house — move everyone however you like! 💖</p>
+    <button id="startBtn">Open the house! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const house = document.getElementById('house');
+  const rooms = [...document.querySelectorAll('.room')];
+  const people = [...document.querySelectorAll('.person')];
+  const taskText = document.getElementById('taskText');
+  const doneStar = document.getElementById('doneStar');
+  const starsEl = document.getElementById('stars');
+  const hintEl = document.getElementById('hint');
+  const overlay = document.getElementById('overlay');
+
+  const ROOMS = {
+    kitchen:  { label: 'the Kitchen',     says: ['Mmm, something smells yummy!', 'I am making a snack!', 'Pancakes for everyone!'] },
+    living:   { label: 'the Living Room', says: ['Cozy story time!', 'Shh, my show is on!', 'I love this couch!'] },
+    bedroom:  { label: 'the Bedroom',     says: ['Sweet dreams!', 'Nap time! Zzz…', 'The coziest bed ever!'] },
+    playroom: { label: 'the Playroom',    says: ['Play time! Yay!', 'Let us build a tower!', 'I found a kite!'] },
+  };
+
+  let stars = 0;
+  let task = null; // { name, room, text }
+
+  function speak(text, pitch = 1.35) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.05; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  function blip(freq, dur = 0.08) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* no sound is fine */ }
+  }
+  let audio = null;
+  function jingle() {
+    [523, 659, 784].forEach((f, i) => setTimeout(() => blip(f, 0.28), i * 90));
+  }
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800'];
+    for (let i = 0; i < 30; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  // place family on the "porch" (below the house, overlapping bottom)
+  function porchPosition(i) {
+    const r = house.getBoundingClientRect();
+    return {
+      x: r.width * (0.14 + i * 0.18) - 30,
+      y: r.height - 46,
+    };
+  }
+  function placeOnPorch() {
+    people.forEach((p, i) => {
+      const pos = porchPosition(i);
+      p.style.left = pos.x + 'px';
+      p.style.top = pos.y + 'px';
+    });
+  }
+
+  function roomAt(x, y) {
+    for (const r of rooms) {
+      const b = r.getBoundingClientRect();
+      if (x >= b.left && x <= b.right && y >= b.top && y <= b.bottom) return r;
+    }
+    return null;
+  }
+
+  function arriveRoom(person, room, silent) {
+    const name = person.dataset.name;
+    const info = ROOMS[room.dataset.room];
+    if (!silent) {
+      const bubble = person.querySelector('.bubble');
+      const line = info.says[Math.floor(Math.random() * info.says.length)];
+      bubble.textContent = line;
+      bubble.classList.add('show');
+      setTimeout(() => bubble.classList.remove('show'), 2600);
+      blip(700, 0.08);
+      hintEl.textContent = name + ' is in ' + info.label + '! ' + line;
+      speak(name + ' is in ' + info.label + '! ' + line, 1.4);
+    }
+    // task check
+    if (task && task.name === name && task.room === room.dataset.room) {
+      task = null;
+      stars++;
+      starsEl.textContent = stars;
+      doneStar.textContent = '⭐';
+      setTimeout(() => { doneStar.textContent = ''; }, 2500);
+      burstConfetti();
+      jingle();
+      taskText.innerHTML = '⭐ Great job! ' + name + ' loves it there! Roll for another task! 🎲';
+      speak('Great job! Task complete!', 1.45);
+    }
+  }
+
+  // ---------- dragging ----------
+  let drag = null; // { person, offsetX, offsetY }
+
+  people.forEach(p => {
+    p.addEventListener('pointerdown', e => {
+      const houseRect = house.getBoundingClientRect();
+      drag = {
+        person: p,
+        offX: e.clientX - houseRect.left - (parseFloat(p.style.left) || 0),
+        offY: e.clientY - houseRect.top - (parseFloat(p.style.top) || 0),
+      };
+      p.classList.add('dragging');
+      try { p.setPointerCapture(e.pointerId); } catch (err) { }
+      blip(520, 0.06);
+      e.preventDefault();
+    });
+    p.addEventListener('pointermove', e => {
+      if (!drag || drag.person !== p) return;
+      const houseRect = house.getBoundingClientRect();
+      const x = e.clientX - houseRect.left - drag.offX;
+      const y = e.clientY - houseRect.top - drag.offY;
+      p.style.left = x + 'px';
+      p.style.top = y + 'px';
+      // highlight the room under the person's center
+      const pr = p.getBoundingClientRect();
+      const cx = pr.left + pr.width / 2, cy = pr.top + pr.height / 2;
+      const r = roomAt(cx, cy);
+      rooms.forEach(rr => rr.classList.toggle('highlight', rr === r));
+    });
+    p.addEventListener('pointerup', e => {
+      if (!drag || drag.person !== p) return;
+      p.classList.remove('dragging');
+      const pr = p.getBoundingClientRect();
+      const cx = pr.left + pr.width / 2, cy = pr.top + pr.height / 2;
+      const r = roomAt(cx, cy);
+      rooms.forEach(rr => rr.classList.remove('highlight'));
+      if (r) arriveRoom(p, r, false);
+      else blip(300, 0.08);
+      drag = null;
+    });
+  });
+
+  // ---------- tasks ----------
+  const PEOPLE = ['Dad', 'Mom', 'Brother', 'Sister', 'Baby'];
+  const TASK_IDEAS = [
+    { room: 'bedroom', text: (n) => '😴 ' + n + ' is sleepy! Take ' + n + ' to the Bedroom!' },
+    { room: 'kitchen', text: (n) => '🍳 ' + n + ' is hungry! Take ' + n + ' to the Kitchen!' },
+    { room: 'playroom', text: (n) => '🧸 ' + n + ' wants to play! Take ' + n + ' to the Playroom!' },
+    { room: 'living', text: (n) => '📖 ' + n + ' wants a story! Take ' + n + ' to the Living Room!' },
+  ];
+
+  document.getElementById('diceBtn').addEventListener('click', () => {
+    if (task) {
+      taskText.innerHTML = task.text;
+      return;
+    }
+    const name = PEOPLE[Math.floor(Math.random() * PEOPLE.length)];
+    const idea = TASK_IDEAS[Math.floor(Math.random() * TASK_IDEAS.length)];
+    task = { name, room: idea.room, text: idea.text(name) };
+    taskText.innerHTML = task.text;
+    doneStar.textContent = '';
+    blip(660, 0.08);
+    speak(task.text.replace(/<[^>]*>/g, ''), 1.4);
+    hintEl.textContent = 'Drag ' + name + ' to make the wish come true! ⭐';
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    placeOnPorch();
+    speak('Welcome to the family house! Drag Dad, Mom, Brother, Sister and Baby into any room!', 1.3);
+  });
+
+  window.addEventListener('resize', placeOnPorch);
+})();
+</script>
+</body>
+</html>
