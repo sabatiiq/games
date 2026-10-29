@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Dental Clinic! 🦷🪥</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: linear-gradient(180deg, #e0f2f1 0%, #b2dfdb 55%, #80cbc4 100%);
+    user-select: none; touch-action: none;
+  }
+  body { min-height: 100vh; }
+  #app { max-width: 860px; margin: 0 auto; padding: 14px 12px 16px; }
+
+  a.home {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.9); color: #00695c; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.94); border: 4px solid #00897b; border-radius: 30px;
+    padding: 8px 20px; font-size: clamp(16px, 3.2vw, 24px); font-weight: bold; color: #004d40;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  #stepBanner {
+    display: flex; justify-content: center; align-items: center;
+    background: rgba(255,255,255,0.94); border: 4px solid #4db6ac; border-radius: 22px;
+    padding: 10px 14px; margin-bottom: 12px; text-align: center;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.12);
+    min-height: 52px;
+  }
+  #stepText { font-size: clamp(15px, 3.2vw, 22px); font-weight: bold; color: #004d40; }
+
+  #clinic {
+    position: relative;
+    border-radius: 18px 18px 10px 10px;
+    background: linear-gradient(180deg, #e0f2f1, #b2dfdb);
+    border: 6px solid #00897b;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.25);
+    height: clamp(400px, 58vh, 520px);
+    padding: 10px;
+  }
+  #cross { position: absolute; top: 8px; left: 14px; font-size: clamp(18px, 3.6vw, 26px); font-weight: bold; color: #fff; background: #26a69a; border-radius: 8px; padding: 0 10px; }
+  #dentist {
+    position: absolute; left: 8%; top: 12%;
+    font-size: clamp(38px, 8vw, 58px); line-height: 1;
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.3));
+    pointer-events: none;
+    animation: docBounce 1.4s ease-in-out infinite alternate;
+    z-index: 10;
+  }
+  @keyframes docBounce { from { transform: translateY(0); } to { transform: translateY(-6px); } }
+
+  /* dental chair */
+  #chair {
+    position: absolute; right: 12%; top: 16%;
+    width: clamp(90px, 20vw, 150px); height: clamp(120px, 26vh, 180px);
+    background: linear-gradient(180deg, #64b5f6, #1e88e5);
+    border: 5px solid #1565c0; border-radius: 22px 22px 16px 16px;
+    box-shadow: 0 10px 18px rgba(0,0,0,0.25);
+    display: flex; align-items: flex-end; justify-content: center;
+  }
+  #chairHead { position: absolute; top: -22px; left: 50%; transform: translateX(-50%); width: 60%; height: 34px; background: #42a5f5; border: 4px solid #1565c0; border-radius: 14px; }
+  #chairLabel { margin-bottom: 6px; font-size: clamp(11px, 2.2vw, 14px); font-weight: bold; color: #fff; background: rgba(0,0,0,0.25); border-radius: 8px; padding: 1px 8px; }
+  #chair.glow { box-shadow: 0 10px 18px rgba(0,0,0,0.25), 0 0 0 6px #ffeb3b; }
+
+  /* waiting bench */
+  #waitingBench {
+    position: absolute; left: 6%; bottom: 8%;
+    background: #ffb74d; border: 4px solid #ef6c00; border-radius: 14px;
+    padding: 8px 14px; min-height: 70px; min-width: 150px;
+    display: flex; align-items: center;
+  }
+  #waitingBench .lbl { font-size: clamp(11px, 2.2vw, 14px); font-weight: bold; color: #5d4037; margin-right: 8px; }
+
+  .waitingPt { font-size: clamp(34px, 7vw, 50px); line-height: 1; }
+
+  /* the patient sitting in the chair */
+  #patient {
+    position: absolute; z-index: 20;
+    display: flex; flex-direction: column; align-items: center;
+    cursor: grab; touch-action: none;
+    left: 30%; top: 24%;
+  }
+  #patient .em {
+    font-size: clamp(44px, 9.5vw, 66px); line-height: 1;
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.35));
+    pointer-events: none;
+  }
+  #patient .pname {
+    font-size: clamp(10px, 2.2vw, 14px); font-weight: bold; color: #37474f;
+    background: rgba(255,255,255,0.94); border-radius: 8px; padding: 0 8px;
+    pointer-events: none;
+  }
+  #patient.dragging { cursor: grabbing; z-index: 40; }
+  #patient.dragging .em { transform: scale(1.25); }
+  #patient.seated { cursor: default; }
+  #patient .bubble {
+    position: absolute; top: -38px; left: 50%; transform: translateX(-50%);
+    background: #fff; color: #37474f; font-weight: bold;
+    font-size: clamp(11px, 2.4vw, 15px);
+    border: 3px solid #4db6ac; border-radius: 14px;
+    padding: 3px 10px; white-space: nowrap;
+    opacity: 0; transition: opacity 0.3s; pointer-events: none;
+    z-index: 5;
+  }
+  #patient .bubble.show { opacity: 1; }
+  #patient.bigsmile .em { animation: smileHop 0.6s ease-in-out 2; }
+  @keyframes smileHop {
+    0%, 100% { transform: translateY(0); }
+    50%      { transform: translateY(-12px) rotate(-5deg); }
+  }
+
+  /* the big mouth panel */
+  #mouth {
+    position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) scale(0);
+    z-index: 30;
+    width: min(92%, 620px);
+    background: #f48fb1;
+    border: 8px solid #ec407a; border-radius: 40px;
+    padding: 18px 16px 14px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.4);
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  #mouth.open { transform: translate(-50%, -50%) scale(1); }
+  #mouthTitle { text-align: center; font-size: clamp(14px, 3vw, 20px); font-weight: bold; color: #880e4f; margin-bottom: 10px; }
+  .teethRow { display: flex; justify-content: center; gap: 8px; margin: 6px 0; }
+  .tooth {
+    width: clamp(52px, 10vw, 72px); height: clamp(58px, 11vw, 80px);
+    background: #ffffff; border: 4px solid #cfd8dc; border-radius: 12px 12px 18px 18px;
+    position: relative; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+  }
+  .tooth.dirty { background: #d9c8a8; border-color: #a1887f; }
+  .tooth.dirty.glow { animation: toothPulse 0.8s ease-in-out infinite alternate; }
+  @keyframes toothPulse {
+    from { box-shadow: 0 0 0 0 rgba(255,235,59,0.7); }
+    to   { box-shadow: 0 0 0 10px rgba(255,235,59,0); }
+  }
+  .tooth .scrub { position: absolute; bottom: 4px; font-size: clamp(12px, 2.4vw, 16px); color: #00695c; font-weight: bold; }
+  .bug {
+    position: absolute; font-size: clamp(26px, 5vw, 38px); line-height: 1;
+    cursor: pointer; z-index: 5;
+    animation: bugWiggle 0.7s ease-in-out infinite alternate;
+    filter: drop-shadow(0 3px 4px rgba(0,0,0,0.35));
+  }
+  @keyframes bugWiggle {
+    from { transform: rotate(-14deg) translate(-4px, 0); }
+    to   { transform: rotate(14deg)  translate(4px, -4px); }
+  }
+  .tongue { height: 26px; background: #e57373; border-radius: 0 0 40px 40px; margin-top: 4px; }
+
+  #hint {
+    text-align: center; margin-top: 12px; min-height: 26px;
+    color: #004d40; font-size: clamp(15px, 3.4vw, 20px); font-weight: bold;
+  }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(0,60,55,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #f2fbfa; border: 4px solid #00897b; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 500px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: clamp(25px, 6.5vw, 40px); color: #00695c; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #1c4a45; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #00897b; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #004d40;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #004d40; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #6b9e97; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+
+<div id="app">
+  <div id="hud">
+    <div class="chip">🦷 Sabrina's Dental Clinic</div>
+    <div class="chip">🪥 Patient <span id="patientNum">1</span> / <span id="patientTotal">4</span></div>
+    <div class="chip">⭐ <span id="stars">0</span></div>
+  </div>
+
+  <div id="stepBanner">
+    <div id="stepText">The clinic is opening… 🦷</div>
+  </div>
+
+  <div id="clinic">
+    <div id="cross">✚</div>
+    <div id="dentist">👩‍⚕️🪥</div>
+    <div id="chair"><div id="chairHead"></div><div id="chairLabel">Dentist chair</div></div>
+    <div id="waitingBench"><span class="lbl">Waiting:</span><span id="benchPts"></span></div>
+
+    <div id="patient">
+      <div class="bubble"></div>
+      <div class="em">🐰</div>
+      <div class="pname">Bunny</div>
+    </div>
+  </div>
+
+  <div id="mouth">
+    <div id="mouthTitle">👅 Open wide! Say ahhh!</div>
+    <div class="teethRow" id="rowTop"></div>
+    <div class="teethRow" id="rowBottom"></div>
+    <div class="tongue"></div>
+  </div>
+
+  <div id="hint">👆 Drag the patient into the dentist chair! 🪥</div>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <h2>🦷 Sabrina's Dental Clinic!</h2>
+    <p>Put on your mask — <b>you are Dentist Sabrina</b> now! 🪥✨</p>
+    <p>Friends arrive with <b>sugar bugs 🦠</b> on their teeth from too much candy!</p>
+    <p><b>Drag them into the chair</b>, then: 1️⃣ <b>Tap every sugar bug</b> to catch it! 2️⃣ <b>Tap the grey teeth</b> to brush them shiny white! 🪥</p>
+    <p class="keyhint">4 patients need your help. Gentle hands, Dentist Sabrina! 💖</p>
+    <button id="startBtn">Open the clinic! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const clinic = document.getElementById('clinic');
+  const chair = document.getElementById('chair');
+  const patient = document.getElementById('patient');
+  const patientEm = patient.querySelector('.em');
+  const patientName = patient.querySelector('.pname');
+  const patientBubble = patient.querySelector('.bubble');
+  const bench = document.getElementById('benchPts');
+  const stepText = document.getElementById('stepText');
+  const patientNumEl = document.getElementById('patientNum');
+  const starsEl = document.getElementById('stars');
+  const hintEl = document.getElementById('hint');
+  const mouth = document.getElementById('mouth');
+  const rowTop = document.getElementById('rowTop');
+  const rowBottom = document.getElementById('rowBottom');
+  const mouthTitle = document.getElementById('mouthTitle');
+  const overlay = document.getElementById('overlay');
+
+  const PATIENTS = [
+    { name: 'Bunny', em: '🐰', bugs: 3, grey: 1 },
+    { name: 'Bear',  em: '🧸', bugs: 4, grey: 2 },
+    { name: 'Kitty', em: '🐱', bugs: 4, grey: 2 },
+    { name: 'Panda', em: '🐼', bugs: 5, grey: 3 },
+  ];
+
+  let patientIndex = 0;
+  let stars = 0;
+  let phase = 'drag'; // drag | bugs | brush | done
+  let busy = false;
+
+  function speak(text, pitch = 1.35) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.05; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  function blip(freq, dur = 0.08) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* no sound is fine */ }
+  }
+  let audio = null;
+  function scrubNoise() {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const len = 0.12;
+      const buf = audio.createBuffer(1, audio.sampleRate * len, audio.sampleRate);
+      const d = buf.getChannelData(0);
+      for (let i = 0; i < d.length; i++) d[i] = (Math.random() * 2 - 1) * 0.3;
+      const src = audio.createBufferSource();
+      const g = audio.createGain();
+      g.gain.setValueAtTime(0.1, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + len);
+      src.buffer = buf; src.connect(g).connect(audio.destination);
+      src.start(t);
+    } catch (e) { /* no sound is fine */ }
+  }
+  function jingle() {
+    [523, 659, 784].forEach((f, i) => setTimeout(() => blip(f, 0.28), i * 90));
+  }
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800'];
+    for (let i = 0; i < 30; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+  function sparkleAt(x, y, ch = '✨') {
+    for (let i = 0; i < 5; i++) {
+      const s = document.createElement('span');
+      s.style.cssText = 'position:fixed;pointer-events:none;font-size:20px;z-index:99;';
+      s.textContent = ch;
+      s.style.left = x + 'px'; s.style.top = y + 'px';
+      s.style.transition = 'transform 0.6s ease-out, opacity 0.6s';
+      document.body.appendChild(s);
+      requestAnimationFrame(() => {
+        s.style.transform = 'translate(' + ((Math.random() - 0.5) * 90) + 'px,' + (-40 - Math.random() * 50) + 'px)';
+        s.style.opacity = '0';
+      });
+      setTimeout(() => s.remove(), 650);
+    }
+  }
+
+  function showBubble(text, ms = 2600) {
+    patientBubble.textContent = text;
+    patientBubble.classList.add('show');
+    setTimeout(() => patientBubble.classList.remove('show'), ms);
+  }
+
+  // ---------- patients ----------
+  function benchUpdate() {
+    bench.textContent = PATIENTS.slice(patientIndex + 1).map(p => p.em).join(' ');
+  }
+
+  function arrivePatient() {
+    const p = PATIENTS[patientIndex];
+    phase = 'drag';
+    patientNumEl.textContent = patientIndex + 1;
+    patientEm.textContent = p.em + '😖';
+    patientName.textContent = p.name;
+    benchUpdate();
+    mouth.classList.remove('open');
+    // park patient on the waiting bench
+    const benchRect = bench.getBoundingClientRect();
+    const clinicRect = clinic.getBoundingClientRect();
+    patient.style.left = (benchRect.left - clinicRect.left + 60) + 'px';
+    patient.style.top = (benchRect.top - clinicRect.top - 6) + 'px';
+    chair.classList.add('glow');
+    stepText.textContent = '🚑 ' + p.em + ' ' + p.name + ' has a tooth ache! Drag ' + p.name + ' into the chair!';
+    hintEl.textContent = 'Drag ' + p.name + ' to the glowing dentist chair! 🪥';
+    speak('Oh no! ' + p.name + ' ate too much candy and the sugar bugs are on their teeth! Drag ' + p.name + ' into the chair!', 1.35);
+  }
+
+  function seatPatient() {
+    const p = PATIENTS[patientIndex];
+    phase = 'bugs';
+    chair.classList.remove('glow');
+    // seat the patient: center of chair
+    const chairRect = chair.getBoundingClientRect();
+    const clinicRect = clinic.getBoundingClientRect();
+    patient.style.left = (chairRect.left - clinicRect.left + chairRect.width / 2 - 30) + 'px';
+    patient.style.top = (chairRect.top - clinicRect.top + 10) + 'px';
+    patient.classList.add('seated');
+    patientEm.textContent = p.em + '😬';
+    showBubble('Open wide, ' + p.name + '!', 2000);
+    blip(700, 0.1);
+    buildMouth(p);
+    setTimeout(() => {
+      mouth.classList.add('open');
+      stepText.textContent = '🦠 Catch all ' + p.bugs + ' sugar bugs! Tap them!';
+      hintEl.textContent = 'Tap the sugar bugs! 🦠';
+      speak('Open wide! I see ' + p.bugs + ' sugar bugs! Tap them all, Dentist Sabrina!', 1.4);
+    }, 450);
+  }
+
+  // ---------- mouth build ----------
+  let bugsLeft = 0, greyLeft = 0;
+  function buildMouth(p) {
+    rowTop.innerHTML = ''; rowBottom.innerHTML = '';
+    const total = 10;
+    const greySet = new Set();
+    while (greySet.size < p.grey) greySet.add(Math.floor(Math.random() * total));
+    let idx = 0;
+    bugsLeft = p.bugs; greyLeft = p.grey;
+    [rowTop, rowBottom].forEach(row => {
+      for (let i = 0; i < 5; i++) {
+        const t = document.createElement('div');
+        t.className = 'tooth';
+        if (greySet.has(idx)) {
+          t.classList.add('dirty');
+          t.addEventListener('pointerdown', ev => brushTooth(t, ev));
+        }
+        row.appendChild(t);
+        idx++;
+      }
+    });
+    // scatter sugar bugs on random teeth
+    const allTeeth = [...mouth.querySelectorAll('.tooth')];
+    for (let i = 0; i < p.bugs; i++) {
+      const tooth = allTeeth[Math.floor(Math.random() * allTeeth.length)];
+      const bug = document.createElement('div');
+      bug.className = 'bug';
+      bug.textContent = '🦠';
+      bug.style.left = (20 + Math.random() * 40) + '%';
+      bug.style.top = (20 + Math.random() * 40) + '%';
+      bug.style.animationDelay = (Math.random() * 0.4) + 's';
+      bug.addEventListener('pointerdown', ev => catchBug(bug, ev));
+      tooth.appendChild(bug);
+    }
+    mouthTitle.textContent = '👅 Open wide! Say ahhh!';
+  }
+
+  function catchBug(bug, ev) {
+    bug.remove();
+    bugsLeft--;
+    blip(900, 0.07);
+    sparkleAt(ev.clientX, ev.clientY, '✨');
+    if (bugsLeft <= 0) {
+      phase = 'brush';
+      const p = PATIENTS[patientIndex];
+      stepText.textContent = '🪥 Now brush the ' + p.grey + ' grey teeth! Tap them 3 times!';
+      hintEl.textContent = 'Tap the glowing grey teeth to brush them white! 🪥';
+      speak('All the sugar bugs are caught! Now brush the grey teeth until they are white!', 1.4);
+      mouth.querySelectorAll('.tooth.dirty').forEach(t => t.classList.add('glow'));
+    } else {
+      stepText.textContent = '🦠 Catch all ' + bugsLeft + ' more sugar bugs!';
+    }
+  }
+
+  function brushTooth(tooth, ev) {
+    if (phase !== 'brush') return;
+    scrubNoise();
+    sparkleAt(ev.clientX, ev.clientY, '🫧');
+    let scrubbed = Number(tooth.dataset.scrub || 0) + 1;
+    tooth.dataset.scrub = scrubbed;
+    let lbl = tooth.querySelector('.scrub');
+    if (!lbl) { lbl = document.createElement('span'); lbl.className = 'scrub'; tooth.appendChild(lbl); }
+    lbl.textContent = '🪥 ' + scrubbed + '/3';
+    if (scrubbed >= 3) {
+      tooth.classList.remove('dirty', 'glow');
+      tooth.style.background = '#ffffff';
+      lbl.remove();
+      blip(950, 0.1);
+      sparkleAt(ev.clientX, ev.clientY, '✨');
+      greyLeft--;
+      if (greyLeft <= 0) patientDone();
+    }
+  }
+
+  function patientDone() {
+    const p = PATIENTS[patientIndex];
+    phase = 'done';
+    busy = true;
+    setTimeout(() => mouth.classList.remove('open'), 500);
+    patientEm.textContent = p.em + '😁';
+    patient.classList.add('bigsmile');
+    stars++;
+    starsEl.textContent = stars;
+    burstConfetti();
+    jingle();
+    stepText.textContent = '⭐ All clean! ' + p.em + ' ' + p.name + ' has a sparkly smile!';
+    hintEl.textContent = p.name + ' is all done! ⭐ Next patient coming…';
+    showBubble('My teeth are so clean! Thank you Dentist Sabrina!', 3000);
+    speak('All clean! What a sparkly smile! Thank you, Dentist Sabrina!', 1.45);
+    patientIndex++;
+    setTimeout(() => {
+      busy = false;
+      patient.classList.remove('bigsmile', 'seated');
+      if (patientIndex >= PATIENTS.length) finale();
+      else arrivePatient();
+    }, 2300);
+  }
+
+  // ---------- dragging the patient to the chair ----------
+  let drag = null;
+  patient.addEventListener('pointerdown', e => {
+    if (busy || phase !== 'drag') return;
+    const cr = clinic.getBoundingClientRect();
+    drag = {
+      offX: e.clientX - cr.left - (parseFloat(patient.style.left) || 0),
+      offY: e.clientY - cr.top - (parseFloat(patient.style.top) || 0),
+    };
+    patient.classList.add('dragging');
+    try { patient.setPointerCapture(e.pointerId); } catch (err) { }
+    blip(520, 0.06);
+    e.preventDefault();
+  });
+  patient.addEventListener('pointermove', e => {
+    if (!drag) return;
+    const cr = clinic.getBoundingClientRect();
+    patient.style.left = (e.clientX - cr.left - drag.offX) + 'px';
+    patient.style.top = (e.clientY - cr.top - drag.offY) + 'px';
+    const pr = patient.getBoundingClientRect();
+    const chR = chair.getBoundingClientRect();
+    const over = pr.right > chR.left && pr.left < chR.right && pr.bottom > chR.top && pr.top < chR.bottom;
+    chair.classList.toggle('glow', over);
+  });
+  patient.addEventListener('pointerup', e => {
+    if (!drag) return;
+    patient.classList.remove('dragging');
+    chair.classList.remove('glow');
+    const pr = patient.getBoundingClientRect();
+    const chR = chair.getBoundingClientRect();
+    const over = pr.right > chR.left && pr.left < chR.right && pr.bottom > chR.top && pr.top < chR.bottom;
+    drag = null;
+    if (over && phase === 'drag') seatPatient();
+    else if (phase === 'drag') {
+      hintEl.textContent = 'Bring ' + PATIENTS[patientIndex].name + ' to the dentist chair! 🪥';
+      blip(300, 0.08);
+    }
+  });
+
+  function finale() {
+    stepText.textContent = '🏆 Every smile is sparkly! 🦷';
+    hintEl.textContent = '🎉 Best dentist ever! 🎉';
+    burstConfetti();
+    setTimeout(burstConfetti, 500);
+    setTimeout(burstConfetti, 1000);
+    card.innerHTML = `
+      <h2>🦷 Best Dentist Ever! 🪥</h2>
+      <p>You caught <strong>every sugar bug</strong> and brushed every tooth shiny white — Bunny, Bear, Kitty, and Panda have the <strong>sparkliest smiles</strong>! 😁✨</p>
+      <p>Nurse Molar says: <b>five stars for Dentist Sabrina</b>! ⭐⭐⭐⭐⭐</p>
+      <button id="againBtn">Dentist again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', () => {
+      patientIndex = 0;
+      stars = 0;
+      starsEl.textContent = '0';
+      overlay.classList.add('hidden');
+      arrivePatient();
+    });
+    speak('Best dentist ever! Every smile is sparkly! Thank you, Dentist Sabrina!', 1.4);
+  }
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    arrivePatient();
+  });
+})();
+</script>
+</body>
+</html>
