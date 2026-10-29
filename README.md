@@ -47,6 +47,7 @@ A little collection of browser games for early learners (age 6 and up), made by 
 | 🎤💖 Sabrina's K-Pop Stage | Rhythm & timing, tapping coordination, counting combos | [kpop-game.html](kpop-game.html) |
 | 🎹🌈 Sabrina's Magic Piano | Music play, note letters, following glowing keys, songs | [piano-game.html](piano-game.html) |
 | 🫖☕ Sabrina's Snow Tea Party | Pretend play, listening, serving tea & treats, matching wishes | [tea-party-game.html](tea-party-game.html) |
+| ➕🍎 Sabrina's Plus Plus | Visual addition within 20, counting groups, number sentences | [plus-game.html](plus-game.html) |
 
 ## Tech
 

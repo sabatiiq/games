@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Plus Plus! ➕</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: linear-gradient(160deg, #e8f5e9 0%, #f1f8e9 55%, #dcedc8 100%);
+    user-select: none; touch-action: manipulation;
+  }
+  body { min-height: 100vh; }
+  #app { max-width: 780px; margin: 0 auto; padding: 14px 12px 20px; }
+
+  a.home {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.9); color: #1b5e20; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.94); border: 4px solid #2e7d32; border-radius: 30px;
+    padding: 8px 20px; font-size: clamp(16px, 3.2vw, 24px); font-weight: bold; color: #1b5e20;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  .card {
+    background: #fffdf6; border-radius: 28px;
+    box-shadow: 0 0 0 6px #fff, 0 0 0 12px #66bb6a, 0 20px 40px rgba(0,0,0,0.2);
+    padding: 26px 20px; text-align: center;
+    position: relative;
+  }
+  .hero {
+    font-size: clamp(56px, 11vw, 90px); line-height: 1;
+    display: inline-block;
+    animation: wiggle 2s ease-in-out infinite;
+  }
+  @keyframes wiggle {
+    0%, 100% { transform: rotate(-4deg); }
+    50%      { transform: rotate(4deg); }
+  }
+  .prompt {
+    font-size: clamp(19px, 4vw, 28px); color: #1b5e20; font-weight: bold;
+    margin: 8px 0 12px; min-height: 30px;
+  }
+
+  /* the two groups + plus sign */
+  #visual {
+    display: flex; justify-content: center; align-items: center; gap: 10px;
+    flex-wrap: nowrap; margin-bottom: 14px;
+  }
+  .group {
+    display: flex; flex-wrap: wrap; justify-content: center; align-content: center;
+    gap: 2px; max-width: 34%;
+    background: #f1f8e9; border: 4px dashed #66bb6a; border-radius: 18px;
+    padding: 8px; min-height: 76px; min-width: 76px;
+    font-size: clamp(24px, 5vw, 34px); line-height: 1.15;
+  }
+  #plusSign {
+    font-size: clamp(34px, 7vw, 52px); font-weight: bold; color: #2e7d32;
+    animation: wiggle 1.4s ease-in-out infinite;
+  }
+
+  #equation {
+    font-size: clamp(38px, 8vw, 60px); font-weight: bold; color: #2e7d32;
+    margin-bottom: 16px; letter-spacing: 2px;
+  }
+  #equation .op { color: #ef6c00; margin: 0 8px; }
+  #equation .qmark {
+    color: #ef6c00; background: #fff3e0;
+    border: 4px solid #ef6c00; border-radius: 14px;
+    padding: 0 18px; display: inline-block;
+    animation: blink 1.2s infinite;
+  }
+  @keyframes blink {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.1); }
+  }
+
+  .feedback {
+    font-size: clamp(20px, 4vw, 28px); font-weight: bold;
+    min-height: 34px; margin-bottom: 12px; color: #2e7d32;
+  }
+
+  #choices { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+  .choice {
+    font-family: inherit; font-size: clamp(32px, 7vw, 48px); font-weight: bold;
+    color: #1b5e20; background: #c8e6c9;
+    border: 5px solid #66bb6a; border-radius: 22px;
+    padding: 16px 8px; cursor: pointer;
+    box-shadow: 0 6px 0 #388e3c; transition: transform 0.1s;
+  }
+  .choice:hover { transform: scale(1.05); }
+  .choice:active { transform: translateY(4px); box-shadow: 0 2px 0 #388e3c; }
+  .choice.right { background: #aed581; border-color: #2e7d32; box-shadow: 0 6px 0 #1b5e20; animation: yay 0.45s; }
+  .choice.wrong { background: #ffcdd2; border-color: #e53935; box-shadow: 0 6px 0 #b71c1c; animation: nope 0.4s; }
+  @keyframes yay {
+    0%, 100% { transform: rotate(0); }
+    30%      { transform: rotate(-6deg) scale(1.12); }
+    70%      { transform: rotate(6deg)  scale(1.12); }
+  }
+  @keyframes nope {
+    0%, 100% { transform: translateX(0); }
+    25%      { transform: translateX(-8px); }
+    75%      { transform: translateX(8px); }
+  }
+
+  #nextBtn {
+    font-family: inherit; font-weight: bold;
+    font-size: clamp(18px, 3.6vw, 26px);
+    background: #ffeb3b; color: #5d4037;
+    border: 4px solid #fbc02d; border-radius: 20px;
+    padding: 12px 28px; cursor: pointer;
+    box-shadow: 0 5px 0 #f57f17;
+  }
+  #nextBtn:active { transform: translateY(3px); box-shadow: 0 2px 0 #f57f17; }
+  #nextBtn[disabled] { opacity: 0.4; cursor: not-allowed; }
+
+  /* end screen */
+  #endScreen { display: none; text-align: center; padding: 20px 6px; }
+  #endScreen.show { display: block; }
+  #endScreen h1 {
+    font-size: clamp(30px, 7vw, 54px); color: #1b5e20;
+    text-shadow: 3px 3px 0 #fff, 6px 6px 0 rgba(0,0,0,0.1);
+    margin-bottom: 12px;
+  }
+  .star-row { font-size: clamp(34px, 7vw, 54px); margin: 12px 0; letter-spacing: 4px; line-height: 1.4; }
+  .star-row .star { display: inline-block; animation: pop 0.5s backwards; }
+  @keyframes pop {
+    0%   { transform: scale(0) rotate(-180deg); opacity: 0; }
+    100% { transform: scale(1) rotate(0);       opacity: 1; }
+  }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(20,60,20,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  #overlay .card p { font-size: clamp(16px, 3.6vw, 22px); color: #274d2b; margin-bottom: 8px; line-height: 1.5; }
+  #overlay .card button {
+    margin-top: 14px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #43a047; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #1b5e20;
+  }
+  #overlay .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #1b5e20; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #6b9270; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+
+<div id="app">
+  <div id="hud">
+    <div class="chip">📚 Question <span id="roundNum">1</span> / <span id="roundTotal">10</span></div>
+    <div class="chip">⭐ <span id="stars">0</span></div>
+  </div>
+
+  <div class="card">
+    <div id="gameArea">
+      <div class="hero" id="hero">➕😊</div>
+      <div class="prompt" id="prompt">Mr. Plus has a question for you!</div>
+      <div id="visual">
+        <div class="group" id="groupA"></div>
+        <div id="plusSign">➕</div>
+        <div class="group" id="groupB"></div>
+      </div>
+      <div id="equation"></div>
+      <div class="feedback" id="feedback"></div>
+      <div id="choices"></div>
+      <button id="nextBtn" disabled>Next ➡️</button>
+    </div>
+
+    <div id="endScreen">
+      <div style="font-size: clamp(70px, 15vw, 120px);">➕🏆</div>
+      <h1>Plus Plus Champion!</h1>
+      <div class="star-row" id="finalStars"></div>
+      <p style="font-size: clamp(19px,4vw,28px); color:#1b5e20; margin: 10px 0 20px;">
+        You collected <strong id="finalScore">0</strong> stars! Mr. Plus is so proud! ➕😊
+      </p>
+      <button id="restartBtn">Play again 🌟</button>
+    </div>
+  </div>
+</div>
+
+<div id="overlay">
+  <div class="card">
+    <h2>➕ Sabrina's Plus Plus!</h2>
+    <p>Meet <b>Mr. Plus</b>! ➕😊 He loves adding things together!</p>
+    <p>He will show you <b>two groups</b> of yummy things. <b>Count them all</b> and tap the right answer!</p>
+    <p>10 questions — get stars for every right answer and become the <b>Plus Plus Champion</b>! 🏆</p>
+    <p class="keyhint">You can count the pictures — no rush at all! 🍎🍓</p>
+    <button id="startBtn">Start adding! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const TOTAL_ROUNDS = 10;
+  const ITEMS = ['🍎','🍪','⭐','🍓','🎈','🐱','🌸','🍌'];
+
+  const gameArea = document.getElementById('gameArea');
+  const endScreen = document.getElementById('endScreen');
+  const roundNumEl = document.getElementById('roundNum');
+  const roundTotEl = document.getElementById('roundTotal');
+  const starsEl = document.getElementById('stars');
+  const finalStars = document.getElementById('finalStars');
+  const finalScore = document.getElementById('finalScore');
+  const promptEl = document.getElementById('prompt');
+  const groupA = document.getElementById('groupA');
+  const groupB = document.getElementById('groupB');
+  const equationEl = document.getElementById('equation');
+  const feedbackEl = document.getElementById('feedback');
+  const choicesEl = document.getElementById('choices');
+  const nextBtn = document.getElementById('nextBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  roundTotEl.textContent = TOTAL_ROUNDS;
+
+  let round = 0, stars = 0, current = null, answered = false;
+  const used = new Set();
+
+  function speak(text, pitch = 1.35) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.0; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  function blip(freq, dur = 0.09, type = 'triangle') {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = type; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* no sound is fine */ }
+  }
+  let audio = null;
+  function jingle() {
+    [523, 659, 784].forEach((f, i) => setTimeout(() => blip(f, 0.28), i * 90));
+  }
+  function sadNote() { blip(300, 0.16, 'sine'); }
+
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800'];
+    for (let i = 0; i < 30; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  function randInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+
+  // difficulty ramps up gently
+  function makeProblem() {
+    let a, b;
+    if (round <= 2)      { a = randInt(1, 3); b = randInt(1, 3); }
+    else if (round <= 5) { a = randInt(1, 5); b = randInt(1, 5); }
+    else if (round <= 8) { a = randInt(2, 9); b = randInt(1, 6); }
+    else                 { a = randInt(6, 10); b = randInt(4, 10); }
+    const emA = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    let emB = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    while (emB === emA) emB = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    return { a, b, answer: a + b, emA, emB };
+  }
+
+  function freshProblem() {
+    let p, tries = 0;
+    do { p = makeProblem(); tries++; } while (used.has(p.a + '+' + p.b) && tries < 40);
+    used.add(p.a + '+' + p.b);
+    return p;
+  }
+
+  function makeChoices(correct) {
+    const set = new Set([correct]);
+    let tries = 0;
+    while (set.size < 3 && tries < 100) {
+      tries++;
+      const delta = randInt(-3, 3);
+      if (delta === 0) continue;
+      const cand = correct + delta;
+      if (cand >= 0) set.add(cand);
+    }
+    let n = Math.max(0, correct - 4);
+    while (set.size < 3) { if (n !== correct) set.add(n); n++; }
+    return [...set].sort(() => Math.random() - 0.5);
+  }
+
+  function showRound() {
+    if (round >= TOTAL_ROUNDS) return showEnd();
+    answered = false;
+    current = freshProblem();
+    roundNumEl.textContent = round + 1;
+    promptEl.textContent = 'Count them all! What do you get?';
+    groupA.innerHTML = current.emA.repeat(current.a);
+    groupB.innerHTML = current.emB.repeat(current.b);
+    equationEl.innerHTML =
+      current.a + ' <span class="op">+</span> ' + current.b +
+      ' <span class="op">=</span> <span class="qmark">?</span>';
+    feedbackEl.textContent = '';
+    nextBtn.disabled = true;
+
+    choicesEl.innerHTML = '';
+    makeChoices(current.answer).forEach(n => {
+      const b = document.createElement('button');
+      b.className = 'choice';
+      b.textContent = n;
+      b.addEventListener('click', () => onChoice(b, n));
+      choicesEl.appendChild(b);
+    });
+
+    setTimeout(() => speak('What is ' + current.a + ' plus ' + current.b + '?'), 300);
+  }
+
+  function onChoice(btn, value) {
+    if (answered) return;
+    answered = true;
+    nextBtn.disabled = false;
+    choicesEl.querySelectorAll('.choice').forEach(c => c.style.pointerEvents = 'none');
+
+    if (value === current.answer) {
+      btn.classList.add('right');
+      stars++;
+      starsEl.textContent = stars;
+      feedbackEl.style.color = '#2e7d32';
+      feedbackEl.textContent = '🌟 Yes! ' + current.a + ' plus ' + current.b + ' makes ' + current.answer + '! 🌟';
+      burstConfetti();
+      jingle();
+      speak('Yes! ' + current.a + ' plus ' + current.b + ' makes ' + current.answer + '!', 1.45);
+    } else {
+      btn.classList.add('wrong');
+      choicesEl.querySelectorAll('.choice').forEach(c => {
+        if (Number(c.textContent) === current.answer) c.classList.add('right');
+      });
+      feedbackEl.style.color = '#d84315';
+      feedbackEl.textContent = 'Almost! ' + current.a + ' plus ' + current.b + ' makes ' + current.answer + '.';
+      sadNote();
+      speak('Almost! ' + current.a + ' plus ' + current.b + ' makes ' + current.answer + '. Count the pictures!', 1.3);
+    }
+  }
+
+  function showEnd() {
+    gameArea.style.display = 'none';
+    endScreen.classList.add('show');
+    finalScore.textContent = stars;
+    finalStars.innerHTML = '';
+    for (let i = 0; i < stars; i++) {
+      const s = document.createElement('span');
+      s.className = 'star';
+      s.textContent = '⭐';
+      s.style.animationDelay = (i * 0.15) + 's';
+      finalStars.appendChild(s);
+    }
+    burstConfetti();
+    setTimeout(burstConfetti, 500);
+    jingle();
+    speak('Plus Plus Champion! You got ' + stars + ' stars! Mr. Plus is so proud!', 1.4);
+  }
+
+  nextBtn.addEventListener('click', () => { round++; showRound(); });
+  restartBtn.addEventListener('click', () => {
+    round = 0; stars = 0; used.clear();
+    starsEl.textContent = '0';
+    gameArea.style.display = 'block';
+    endScreen.classList.remove('show');
+    showRound();
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    document.getElementById('overlay').classList.add('hidden');
+    showRound();
+  });
+})();
+</script>
+</body>
+</html>
