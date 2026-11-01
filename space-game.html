@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Space Trip! 🚀🪐</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%; overflow: hidden;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    user-select: none; touch-action: none;
+    background: #0d0d2b;
+  }
+  #view { position: absolute; inset: 0; display: block; }
+
+  #hud {
+    position: absolute; top: 10px; left: 0; right: 0; z-index: 5;
+    display: flex; justify-content: center; gap: 10px; pointer-events: none; flex-wrap: wrap;
+  }
+  .chip {
+    background: rgba(255,255,255,0.92); border: 3px solid #7c4dff; border-radius: 18px;
+    padding: 6px 16px; font-size: clamp(16px, 4vw, 26px); font-weight: bold; color: #4527a0;
+    box-shadow: 0 3px 0 rgba(0,0,0,0.3);
+  }
+  a.home {
+    position: absolute; top: 12px; left: 12px; z-index: 6;
+    background: rgba(255,255,255,0.75); color: #4527a0; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold; pointer-events: auto;
+  }
+  #hint {
+    position: absolute; bottom: 16px; left: 0; right: 0; z-index: 5; text-align: center;
+    color: #d1c4e9; font-size: clamp(14px, 3.4vw, 20px); font-weight: bold; pointer-events: none;
+    text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+  }
+
+  #overlay {
+    position: absolute; inset: 0; z-index: 10;
+    background: rgba(10,5,40,0.65);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #f3efff; border: 4px solid #7c4dff; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 500px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.5);
+  }
+  .card h2 { font-size: clamp(26px, 7vw, 42px); color: #4527a0; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #32265e; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #7c4dff; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #4527a0;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #4527a0; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #8f7bb8; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+<canvas id="view"></canvas>
+
+<div id="hud">
+  <div class="chip">🪐 <span id="planetCount">0</span>/<span id="planetTotal">8</span></div>
+  <div class="chip">⭐ <span id="starCount">0</span></div>
+</div>
+<div id="hint">👆 Drag up and down to fly your rocket! Collect the planets! 🪐</div>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>🚀 Sabrina's Space Trip!</h2>
+    <p>3… 2… 1… <b>Blast off!</b> You are flying your rocket through space! 🚀✨</p>
+    <p><b>Touch and drag</b> (or press ↑ ↓ arrow keys) to fly <b>up and down</b>.</p>
+    <p>Collect <b>all 8 planets</b> 🪐 — Mercury, Venus, Earth, Mars, Jupiter, Saturn, Uranus, Neptune! Grab stars ⭐ too, and bounce gently off meteors ☄️!</p>
+    <p class="keyhint">Fly all the way to the Moon 🌕 — the aliens are waiting with a party! 👽🎉</p>
+    <button id="startBtn">Blast off! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const canvas = document.getElementById('view');
+  const ctx = canvas.getContext('2d');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+  const planetCountEl = document.getElementById('planetCount');
+  const starCountEl = document.getElementById('starCount');
+  const hintEl = document.getElementById('hint');
+
+  let W = 0, H = 0, dpr = 1;
+
+  const WORLD_W = 4800;
+  const GOAL_X = 4600;
+  const ROCKET_SPEED = 250;
+  const METEOR_SPEED = 130;
+  const STEER_KEY = 430;
+
+  const PLANETS = [
+    { name: 'Mercury', color: '#b1a7a6' },
+    { name: 'Venus',   color: '#f4a261' },
+    { name: 'Earth',   color: '#4da3ff' },
+    { name: 'Mars',    color: '#e76f51' },
+    { name: 'Jupiter', color: '#d9a066' },
+    { name: 'Saturn',  color: '#e8c468', ring: true },
+    { name: 'Uranus',  color: '#7fdbc4' },
+    { name: 'Neptune', color: '#4f6df5' },
+  ];
+
+  let rocket, planets, stars, meteors, aliens, bgStars, cameraX, running, won;
+  let planetsGot, starsGot, wobble;
+  const input = { steer: false, targetY: 0, up: false, down: false };
+  const fx = [];
+
+  function topLimit() { return 60; }
+  function bottomLimit() { return H - 50; }
+
+  // ---------- build the level ----------
+  function buildLevel() {
+    planets = PLANETS.map((pl, i) => ({
+      ...pl,
+      x: 420 + i * (GOAL_X - 800) / 8,
+      y: H * (0.25 + ((i * 0.37) % 0.5)),
+      got: false,
+      bob: Math.random() * 6,
+    }));
+    stars = [];
+    for (let x = 300; x < GOAL_X - 100; x += 130) {
+      if (Math.random() < 0.55) continue;
+      stars.push({ x, y: topLimit() + Math.random() * (bottomLimit() - topLimit()), got: false, bob: Math.random() * 6 });
+    }
+    meteors = [];
+    for (let x = 700; x < GOAL_X - 250; x += 520 + Math.random() * 380) {
+      meteors.push({ x, y: topLimit() + Math.random() * (bottomLimit() - topLimit() - 100) + 50, got: false, spin: Math.random() * 6 });
+    }
+    aliens = [];
+    for (let i = 0; i < 6; i++) {
+      aliens.push({ x: Math.random() * WORLD_W, y: topLimit() + Math.random() * (bottomLimit() - topLimit()), ph: Math.random() * 6 });
+    }
+    bgStars = [];
+    for (let i = 0; i < 90; i++) {
+      bgStars.push({ x: Math.random() * WORLD_W, y: Math.random() * H, s: 1 + Math.random() * 2, tw: Math.random() * 6 });
+    }
+  }
+
+  function resetGame() {
+    buildLevel();
+    rocket = { x: 130, y: H * 0.5, angle: 0 };
+    input.targetY = rocket.y;
+    cameraX = 0;
+    planetsGot = 0; starsGot = 0; won = false;
+    wobble = 0;
+    planetCountEl.textContent = '0';
+    starCountEl.textContent = '0';
+    hintEl.classList.remove('hidden');
+  }
+
+  function sizeCanvas() {
+    dpr = Math.max(1, Math.min(3, window.devicePixelRatio || 1));
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = W * dpr; canvas.height = H * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
+  function speak(text, pitch = 1.4) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.05; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  // ---------- loop ----------
+  let lastT = 0;
+  function tick(t) {
+    if (!running) return;
+    const dt = Math.min(0.04, (t - lastT) / 1000 || 0);
+    lastT = t;
+    update(dt);
+    render(t);
+    requestAnimationFrame(tick);
+  }
+
+  function update(dt) {
+    wobble = Math.max(0, wobble - dt);
+    rocket.x += (wobble > 0.35 ? 120 : ROCKET_SPEED) * dt;
+
+    if (input.steer) {
+      rocket.y += (input.targetY - rocket.y) * Math.min(1, 10 * dt);
+    } else {
+      input.targetY += ((input.down ? 1 : 0) - (input.up ? 1 : 0)) * STEER_KEY * dt;
+      input.targetY = Math.max(topLimit() + 20, Math.min(bottomLimit() - 20, input.targetY));
+      rocket.y += (input.targetY - rocket.y) * Math.min(1, 10 * dt);
+    }
+    rocket.y = Math.max(topLimit() + 20, Math.min(bottomLimit() - 20, rocket.y));
+    rocket.angle = Math.max(-0.25, Math.min(0.25, (input.targetY - rocket.y) / 350));
+
+    // planets
+    for (const pl of planets) {
+      if (pl.got) continue;
+      if (Math.abs(rocket.x - pl.x) < 62 && Math.abs(rocket.y - pl.y) < 62) {
+        pl.got = true;
+        planetsGot++;
+        planetCountEl.textContent = planetsGot;
+        popText(pl.name + '!', pl.x, pl.y - 46, pl.color);
+        sparkle(pl.x, pl.y, '🪐');
+        speak(pl.name + '!' + (pl.name === 'Jupiter' ? ' The biggest planet!' : ''), 1.45);
+      }
+    }
+
+    // stars
+    for (const s of stars) {
+      if (s.got) continue;
+      if (Math.abs(rocket.x - s.x) < 40 && Math.abs(rocket.y - s.y) < 40) {
+        s.got = true;
+        starsGot++;
+        starCountEl.textContent = starsGot;
+        popText('+1', s.x, s.y, '#ffd54f');
+        sparkle(s.x, s.y, '⭐');
+        if (starsGot % 10 === 0) speak(starsGot + ' stars!', 1.5);
+      }
+    }
+
+    // meteors: gentle boing
+    for (const m of meteors) {
+      if (m.got) continue;
+      if (Math.abs(rocket.x - m.x) < 48 && Math.abs(rocket.y - m.y) < 44) {
+        m.got = true;
+        wobble = 1.0;
+        popText('Boing!', m.x, m.y - 26, '#ff8a65');
+        for (let i = 0; i < 6; i++) fx.push({ x: m.x, y: m.y, ch: '💥', vx: (Math.random() - 0.5) * 140, vy: -100 - Math.random() * 80, life: 0.6, t: 0 });
+        speak('Boing! Watch for meteors!', 1.4);
+      }
+    }
+
+    // aliens drift slowly
+    for (const a of aliens) {
+      a.x -= 18 * dt;
+      if (a.x < cameraX - 80) a.x = cameraX + W + 80;
+    }
+
+    if (!won && rocket.x >= GOAL_X) { won = true; winGame(); }
+
+    cameraX = Math.max(0, Math.min(WORLD_W - W, rocket.x - W * 0.32));
+
+    for (let i = fx.length - 1; i >= 0; i--) {
+      const p = fx[i]; p.t += dt; p.x += p.vx * dt; p.y += p.vy * dt;
+      if (p.t >= p.life) fx.splice(i, 1);
+    }
+  }
+
+  function sparkle(x, y, ch) { for (let i = 0; i < 7; i++) fx.push({ x, y, ch, vx: (Math.random()-0.5)*130, vy: -70 - Math.random()*90, life: 0.8, t: 0 }); }
+  function popText(txt, x, y, color) { fx.push({ x, y, txt, color, vx: 0, vy: -55, life: 1.1, t: 0 }); }
+
+  function drawPlanetShape(x, y, r, color, ring, name) {
+    ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle = color; ctx.fill();
+    ctx.globalAlpha = 0.35;
+    ctx.beginPath(); ctx.arc(x - r * 0.3, y - r * 0.3, r * 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff'; ctx.fill();
+    ctx.globalAlpha = 1;
+    if (ring) {
+      ctx.strokeStyle = '#d7b25c'; ctx.lineWidth = 5;
+      ctx.beginPath(); ctx.ellipse(x, y, r * 1.7, r * 0.55, -0.3, 0, Math.PI * 2); ctx.stroke();
+    }
+    if (name) {
+      ctx.font = 'bold ' + Math.max(12, Math.round(r * 0.5)) + 'px "Comic Sans MS", serif';
+      ctx.fillStyle = '#fff'; ctx.textAlign = 'center';
+      ctx.fillText(name, x, y + r + 20);
+    }
+  }
+
+  // ---------- render ----------
+  function render(t) {
+    // space
+    ctx.fillStyle = '#0d0d2b';
+    ctx.fillRect(0, 0, W, H);
+
+    // twinkling background stars
+    for (const s of bgStars) {
+      const sx = s.x - cameraX * 0.5;
+      const wrapped = ((sx % (W + 40)) + (W + 40)) % (W + 40) - 20;
+      ctx.globalAlpha = 0.4 + 0.6 * Math.abs(Math.sin(t / 900 + s.tw));
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(wrapped, s.y, s.s, 0, Math.PI * 2); ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    // aliens waving
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const a of aliens) {
+      const sx = a.x - cameraX; if (sx < -40 || sx > W + 40) continue;
+      ctx.font = '34px serif';
+      ctx.fillText('👽', sx, a.y + Math.sin(t / 350 + a.ph) * 8);
+    }
+
+    // meteors
+    for (const m of meteors) {
+      if (m.got) continue;
+      const sx = m.x - cameraX; if (sx < -60 || sx > W + 60) continue;
+      ctx.save();
+      ctx.translate(sx, m.y);
+      ctx.rotate(t / 500 + m.spin);
+      ctx.font = '44px serif';
+      ctx.fillText('☄️', 0, 0);
+      ctx.restore();
+    }
+
+    // stars to collect
+    for (const s of stars) {
+      if (s.got) continue;
+      const sx = s.x - cameraX; if (sx < -50 || sx > W + 50) continue;
+      ctx.font = '34px serif';
+      ctx.fillText('⭐', sx, s.y + Math.sin(t / 350 + s.bob) * 5);
+    }
+
+    // planets
+    for (const pl of planets) {
+      if (pl.got) continue;
+      const sx = pl.x - cameraX; if (sx < -90 || sx > W + 90) continue;
+      const yy = pl.y + Math.sin(t / 400 + pl.bob) * 6;
+      drawPlanetShape(sx, yy, 32, pl.color, pl.ring, pl.name);
+    }
+
+    // the Moon + alien party at the end
+    const gx = GOAL_X - cameraX;
+    if (gx < W + 300) {
+      drawPlanetShape(gx + 120, H * 0.42, 70, '#e8eaf6', false, null);
+      ctx.font = '46px serif'; ctx.textAlign = 'center';
+      ctx.fillText('👽', gx + 90, H * 0.42 - 90);
+      ctx.fillText('🎉', gx + 160, H * 0.42 - 100);
+      ctx.font = 'bold 24px "Comic Sans MS", serif'; ctx.fillStyle = '#d1c4e9';
+      ctx.fillText('MOON PARTY!', gx + 120, H * 0.42 + 110);
+      ctx.font = '40px serif';
+      ctx.fillText('🏁', gx - 30, H * 0.42 - 20);
+    }
+
+    // rocket
+    const px = rocket.x - cameraX;
+    ctx.save();
+    ctx.translate(px, rocket.y);
+    ctx.rotate(rocket.angle + (wobble > 0 ? Math.sin(wobble * 26) * 0.18 : 0));
+    ctx.font = '56px serif'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText('🚀', 0, 0);
+    ctx.restore();
+    // flame
+    ctx.globalAlpha = 0.75; ctx.font = '26px serif';
+    ctx.fillText('🔥', px - 40, rocket.y + 8 + Math.sin(t / 90) * 3);
+    ctx.globalAlpha = 1;
+
+    // fx
+    for (const p of fx) {
+      const sx = p.x - cameraX; const a = 1 - p.t / p.life;
+      ctx.globalAlpha = Math.max(0, a);
+      if (p.txt) { ctx.font = 'bold 26px "Comic Sans MS", serif'; ctx.fillStyle = p.color || '#ffd54f'; ctx.textAlign = 'center'; ctx.fillText(p.txt, sx, p.y); }
+      else { ctx.font = '24px serif'; ctx.textAlign = 'center'; ctx.fillText(p.ch, sx, p.y); }
+      ctx.globalAlpha = 1;
+    }
+  }
+
+  // ---------- win ----------
+  function winGame() {
+    running = false;
+    hintEl.classList.add('hidden');
+    const msg = planetsGot >= 8 ? 'A PERFECT space trip — every single planet! You are a real astronaut! 🌟'
+              : planetsGot >= 5 ? 'Great flying, Captain Sabrina! 🚀'
+              : 'You made it to the Moon party! 🎉';
+    card.innerHTML = `
+      <h2>🌕 Moon Party! 🚀</h2>
+      <p>You flew all the way to the Moon and visited <strong>${planetsGot}</strong> of 8 planets ${starsGot > 0 ? 'and collected <strong>' + starsGot + '</strong> stars! ' : '! '}</p>
+      <p>The aliens are so happy! ${msg}</p>
+      <button id="againBtn">Fly again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', start);
+    for (let i = 0; i < 8; i++) {
+      const pl = PLANETS[i];
+      drawMiniConfetti(pl.color);
+    }
+    speak('Moon party! You visited ' + planetsGot + ' planets! Great flying, Captain Sabrina!', 1.4);
+  }
+
+  function drawMiniConfetti(color) {
+    // reuse fx burst at rocket position in planet colors
+    for (let i = 0; i < 4; i++) fx.push({ x: rocket.x + (Math.random()-0.5)*180, y: rocket.y + (Math.random()-0.5)*160, ch: '', color, vx: (Math.random()-0.5)*160, vy: -80 - Math.random()*120, life: 1.4, t: 0 });
+  }
+
+  function start() {
+    overlay.classList.add('hidden');
+    sizeCanvas();
+    resetGame();
+    running = true;
+    lastT = performance.now();
+    requestAnimationFrame(tick);
+    speak('Blast off! Fly to the planets, Captain Sabrina!', 1.35);
+  }
+
+  // ---------- input: drag to steer ----------
+  function steerTo(e) {
+    input.targetY = Math.max(topLimit() + 20, Math.min(bottomLimit() - 20, e.clientY));
+  }
+  canvas.addEventListener('pointerdown', e => { input.steer = true; steerTo(e); e.preventDefault(); });
+  canvas.addEventListener('pointermove', e => { if (input.steer) steerTo(e); });
+  window.addEventListener('pointerup', () => { input.steer = false; });
+  canvas.addEventListener('pointercancel', () => { input.steer = false; });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') { input.up = true; e.preventDefault(); }
+    if (e.key === 'ArrowDown' || e.key === 's') { input.down = true; e.preventDefault(); }
+  });
+  document.addEventListener('keyup', e => {
+    if (e.key === 'ArrowUp' || e.key === 'w') input.up = false;
+    if (e.key === 'ArrowDown' || e.key === 's') input.down = false;
+  });
+
+  window.addEventListener('resize', () => { sizeCanvas(); });
+
+  document.getElementById('startBtn').addEventListener('click', start);
+  sizeCanvas();
+})();
+</script>
+</body>
+</html>

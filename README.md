@@ -52,6 +52,7 @@ A little collection of browser games for early learners (age 6 and up), made by 
 | 🏠👨‍👩‍👧‍👦 Sabrina's Family House | Family & room words, drag & drop, pretend play, listening | [family-house-game.html](family-house-game.html) |
 | 🏥🩺 Sabrina's Little Hospital | Pretend play, sequencing steps, empathy, drag & drop | [hospital-game.html](hospital-game.html) |
 | 🦷🪥 Sabrina's Dental Clinic | Health habits, tapping coordination, helping, counting | [dentist-game.html](dentist-game.html) |
+| 🚀🪐 Sabrina's Space Trip | Steering, planet names & order, collecting, coordination | [space-game.html](space-game.html) |
 
 ## Tech
 
