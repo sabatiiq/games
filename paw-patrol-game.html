@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Sabrina's Paw Patrol Rescue! 🐾</title>
+<link rel="icon" type="image/png" href="sa-logo.png">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    min-height: 100%;
+    font-family: 'Comic Sans MS', 'Marker Felt', cursive, sans-serif;
+    background: linear-gradient(180deg, #87ceeb 0%, #b3e5fc 45%, #c8e6c9 100%);
+    user-select: none; touch-action: none;
+  }
+  body { min-height: 100vh; }
+  #app { max-width: 860px; margin: 0 auto; padding: 14px 12px 16px; }
+
+  a.home {
+    position: fixed; top: 12px; left: 12px; z-index: 50;
+    background: rgba(255,255,255,0.9); color: #d32f2f; padding: 6px 11px;
+    text-decoration: none; border-radius: 12px; font-size: 14px; font-weight: bold;
+  }
+
+  #hud { display: flex; justify-content: center; gap: 10px; margin-bottom: 10px; flex-wrap: wrap; }
+  .chip {
+    background: rgba(255,255,255,0.94); border: 4px solid #d50000; border-radius: 30px;
+    padding: 8px 20px; font-size: clamp(16px, 3.2vw, 24px); font-weight: bold; color: #b71c1c;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.1);
+  }
+
+  /* Ryder banner */
+  #ryder {
+    display: flex; align-items: center; justify-content: center; gap: 12px;
+    background: rgba(255,255,255,0.94); border: 4px solid #4fc3f7; border-radius: 22px;
+    padding: 10px 14px; margin-bottom: 12px; min-height: 60px;
+    box-shadow: 0 5px 0 rgba(0,0,0,0.12);
+  }
+  #ryderEm { font-size: clamp(34px, 7vw, 52px); line-height: 1; }
+  #missionText { font-size: clamp(15px, 3.2vw, 22px); font-weight: bold; color: #01579b; text-align: left; }
+  #nextBtn {
+    display: none; font-family: inherit; font-weight: bold; cursor: pointer;
+    font-size: clamp(15px, 3.2vw, 20px);
+    background: #d50000; color: #fff; border: 3px solid #b71c1c;
+    border-radius: 14px; padding: 8px 16px;
+    box-shadow: 0 3px 0 #7f0000;
+  }
+  #nextBtn:active { transform: translateY(3px); box-shadow: 0 0 0 #7f0000; }
+
+  /* play area: rescue scene + pup tray */
+  #playArea {
+    position: relative;
+    border-radius: 26px;
+    background: linear-gradient(180deg, #b3e5fc 0%, #dcedc8 100%);
+    border: 5px solid #ffb300;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    height: clamp(430px, 60vh, 560px);
+    overflow: hidden;
+  }
+
+  /* lookout tower in the corner */
+  #lookout {
+    position: absolute; left: 3%; top: 4%;
+    font-size: clamp(44px, 9vw, 70px); line-height: 1;
+    filter: drop-shadow(0 4px 5px rgba(0,0,0,0.25));
+    pointer-events: none; z-index: 2;
+  }
+
+  /* rescue scene = drop zone */
+  #scene {
+    position: absolute; right: 3%; top: 4%;
+    width: 62%; height: 56%;
+    background: rgba(255,255,255,0.75);
+    border: 5px dashed #ef6c00; border-radius: 22px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 6px;
+    transition: box-shadow 0.2s, border-color 0.2s;
+    z-index: 5;
+  }
+  #scene.glow { border-color: #ffeb3b; box-shadow: inset 0 0 0 5px #ffeb3b; }
+  #sceneEm { font-size: clamp(58px, 13vw, 100px); line-height: 1.1; }
+  #sceneSub { font-size: clamp(14px, 3vw, 20px); font-weight: bold; color: #bf360c; }
+
+  /* pup tray */
+  #tray {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 34%;
+    background: rgba(255,255,255,0.55);
+    border-top: 4px solid #ffb300;
+  }
+  #trayLabel {
+    position: absolute; top: 4px; left: 14px;
+    font-size: clamp(11px, 2.2vw, 15px); font-weight: bold; color: #6d4c41;
+  }
+  .pup {
+    position: absolute; z-index: 20;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    cursor: grab; touch-action: none;
+    background: #fff; border: 4px solid var(--pc, #90a4ae); border-radius: 16px;
+    padding: 4px 8px;
+    box-shadow: 0 4px 0 rgba(0,0,0,0.2);
+  }
+  .pup .face { font-size: clamp(28px, 6vw, 42px); line-height: 1.05; }
+  .pup .pupname { font-size: clamp(10px, 2.2vw, 14px); font-weight: bold; color: #37474f; }
+  .pup.dragging { cursor: grabbing; z-index: 45; box-shadow: 0 8px 16px rgba(0,0,0,0.35); transform: scale(1.12); }
+  .pup.used { opacity: 0; pointer-events: none; transition: opacity 0.4s; }
+
+  /* paw badge on rescue */
+  .pawBurst {
+    position: absolute; pointer-events: none; z-index: 60;
+    font-size: clamp(30px, 6vw, 46px);
+    animation: pawPop 1s ease-out forwards;
+  }
+  @keyframes pawPop {
+    0%   { transform: scale(0) rotate(-40deg); opacity: 1; }
+    60%  { transform: scale(1.3) rotate(10deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0); opacity: 0.9; }
+  }
+
+  #hint {
+    text-align: center; margin-top: 12px; min-height: 26px;
+    color: #b71c1c; font-size: clamp(15px, 3.4vw, 20px); font-weight: bold;
+  }
+
+  .confetti {
+    position: fixed; width: 12px; height: 12px; top: -20px;
+    pointer-events: none; z-index: 100;
+    animation: fall 3s linear forwards;
+  }
+  @keyframes fall { to { transform: translateY(110vh) rotate(720deg); } }
+
+  #overlay {
+    position: fixed; inset: 0; z-index: 30;
+    background: rgba(120,10,10,0.55);
+    display: flex; align-items: center; justify-content: center; padding: 20px;
+  }
+  .card {
+    background: #fff8f5; border: 4px solid #d50000; border-radius: 26px;
+    padding: 26px 22px; text-align: center; max-width: 500px;
+    box-shadow: 0 14px 40px rgba(0,0,0,0.4);
+  }
+  .card h2 { font-size: clamp(25px, 6.5vw, 40px); color: #b71c1c; margin-bottom: 12px; }
+  .card p { font-size: clamp(16px, 3.6vw, 22px); color: #5c2a16; margin-bottom: 8px; line-height: 1.5; }
+  .card button {
+    margin-top: 16px; font-family: inherit; font-size: clamp(20px, 5vw, 28px); font-weight: bold;
+    background: #d50000; color: #fff; border: none; border-radius: 20px; padding: 14px 34px;
+    cursor: pointer; box-shadow: 0 6px 0 #7f0000;
+  }
+  .card button:active { transform: translateY(3px); box-shadow: 0 3px 0 #7f0000; }
+  .hidden { display: none !important; }
+  .keyhint { font-size: clamp(13px, 3vw, 17px); color: #c98a84; margin-top: 6px; }
+</style>
+</head>
+<body>
+<a class="home" href="index.html">⌂ Home</a>
+
+<div id="app">
+  <div id="hud">
+    <div class="chip">🐾 Rescue <span id="missionNum">1</span> / <span id="missionTotal">6</span></div>
+    <div class="chip">⭐ <span id="stars">0</span></div>
+  </div>
+
+  <div id="ryder">
+    <div id="ryderEm">🧑‍🦱📣</div>
+    <div id="missionText">Paw Patrol, to the Lookout!</div>
+    <button id="nextBtn">Next rescue ▶</button>
+  </div>
+
+  <div id="playArea">
+    <div id="lookout">🗼</div>
+    <div id="scene">
+      <div id="sceneEm">🐾</div>
+      <div id="sceneSub">Who needs help?</div>
+    </div>
+    <div id="tray">
+      <div id="trayLabel">🐾 The pups — drag the right one to the rescue!</div>
+    </div>
+
+    <!-- pup cards (added by script) -->
+  </div>
+
+  <div id="hint">Ryder needs you! Drag the right pup to the rescue! 🐾</div>
+</div>
+
+<div id="overlay">
+  <div class="card" id="card">
+    <h2>🐾 Sabrina's Paw Patrol Rescue!</h2>
+    <p>No job is too big, no pup is too small! 🐾 And <b>YOU</b> are Ryder's helper today!</p>
+    <p>Someone in Adventure Bay needs help! <b>Read the mission</b>, then <b>drag the right pup</b> to the rescue!</p>
+    <p>🐕 Chase the police pup · 🚒 Marshall the fire pup · 🚁 Skye the sky pup · 🏗️ Rubble · ♻️ Rocky · 🚤 Zuma!</p>
+    <p class="keyhint">6 rescues are waiting. Paw Patrol is on a roll! 🎉</p>
+    <button id="startBtn">To the Lookout! ▶</button>
+  </div>
+</div>
+
+<script>
+(() => {
+  const PUPS = [
+    { name: 'Chase',   em: '🐕', veh: '🚓', color: '#1e88e5', cheer: 'Chase is on the case!' },
+    { name: 'Marshall',em: '🐶', veh: '🚒', color: '#e53935', cheer: 'I am fired up!' },
+    { name: 'Skye',    em: '🐶', veh: '🚁', color: '#ec407a', cheer: 'This pup has gotta fly!' },
+    { name: 'Rubble',  em: '🐶', veh: '🏗️', color: '#fdd835', cheer: 'Rubble on the double!' },
+    { name: 'Rocky',   em: '🐶', veh: '♻️', color: '#43a047', cheer: 'Green means go!' },
+    { name: 'Zuma',    em: '🐶', veh: '🚤', color: '#fb8c00', cheer: 'Let us dive in!' },
+  ];
+
+  const MISSIONS = [
+    { pup: 'Skye',    em: '🙀', em2: '🌳', text: '🙀 Mia the kitty is stuck at the top of the tall tree! Who can fly up and save her?', solvedEm: '😺', solvedText: 'Mia is safe and sound! 🐱💕' },
+    { pup: 'Marshall',em: '😨', em2: '💨', text: '💨 The bakery is full of smoke! Who can spray the water hose?', solvedEm: '🍩', solvedText: 'The bakery is safe! Fresh donuts for everyone! 🍩' },
+    { pup: 'Rubble',  em: '🚗', em2: '💩', text: '🚗 Mr. Porter\u2019s van is stuck in the mud! Who can dig it out?', solvedEm: '🚗', solvedText: 'Vroom! The van is free! 🚗✨' },
+    { pup: 'Chase',   em: '🚦', em2: '🚗🚗', text: '🚦 The traffic light on the bridge is broken and the cars are beeping! Who can direct the traffic?', solvedEm: '🟢', solvedText: 'Beep beep, all clear! Chase made a safe path! 🚓' },
+    { pup: 'Rocky',   em: '🗑️', em2: '🌳', text: '🗑️ The park is full of trash before the big picnic! Who can recycle it all?', solvedEm: '🌳', solvedText: 'The park is clean and green! 🌳♻️' },
+    { pup: 'Zuma',    em: '🚤', em2: '🌊', text: '🚤 Captain Turbot is drifting away on his little boat! Who can swim out and tow him home?', solvedEm: '🚤', solvedText: 'Toot toot! Captain Turbot is back on shore! 🌊' },
+  ];
+
+  const missionNumEl = document.getElementById('missionNum');
+  const missionTotalEl = document.getElementById('missionTotal');
+  const starsEl = document.getElementById('stars');
+  const missionText = document.getElementById('missionText');
+  const nextBtn = document.getElementById('nextBtn');
+  const scene = document.getElementById('scene');
+  const sceneEm = document.getElementById('sceneEm');
+  const sceneSub = document.getElementById('sceneSub');
+  const playArea = document.getElementById('playArea');
+  const tray = document.getElementById('tray');
+  const hintEl = document.getElementById('hint');
+  const overlay = document.getElementById('overlay');
+  const card = document.getElementById('card');
+
+  missionTotalEl.textContent = MISSIONS.length;
+
+  let missionIndex = 0;
+  let stars = 0;
+  let busy = false;
+  const pupEls = {};
+  const homeSlots = {};
+
+  function speak(text, pitch = 1.3) {
+    if (!('speechSynthesis' in window)) return;
+    speechSynthesis.cancel();
+    const u = new SpeechSynthesisUtterance(text);
+    u.lang = 'en-US'; u.rate = 1.05; u.pitch = pitch;
+    speechSynthesis.speak(u);
+  }
+
+  function blip(freq, dur = 0.08) {
+    try {
+      audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+      const t = audio.currentTime;
+      const o = audio.createOscillator(), g = audio.createGain();
+      o.type = 'triangle'; o.frequency.setValueAtTime(freq, t);
+      g.gain.setValueAtTime(0.14, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+      o.connect(g).connect(audio.destination);
+      o.start(t); o.stop(t + dur + 0.02);
+    } catch (e) { /* no sound is fine */ }
+  }
+  let audio = null;
+  function jingle() {
+    [523, 659, 784, 1047].forEach((f, i) => setTimeout(() => blip(f, 0.25), i * 90));
+  }
+  function burstConfetti() {
+    const colors = ['#ff5252','#ffeb3b','#4caf50','#2196f3','#e040fb','#ff9800','#ec407a'];
+    for (let i = 0; i < 36; i++) {
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = Math.random() * 100 + 'vw';
+      c.style.background = colors[i % colors.length];
+      c.style.borderRadius = Math.random() < 0.5 ? '50%' : '2px';
+      c.style.animationDuration = (2 + Math.random() * 2) + 's';
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 4200);
+    }
+  }
+
+  // ---------- build pup cards ----------
+  PUPS.forEach((pup, i) => {
+    const el = document.createElement('div');
+    el.className = 'pup';
+    el.dataset.name = pup.name;
+    el.style.setProperty('--pc', pup.color);
+    el.innerHTML = '<div class="face">' + pup.em + pup.veh + '</div><div class="pupname">' + pup.name + '</div>';
+    playArea.appendChild(el);
+    pupEls[pup.name] = el;
+  });
+
+  function layoutTray() {
+    const areaRect = playArea.getBoundingClientRect();
+    const n = PUPS.length;
+    PUPS.forEach((pup, i) => {
+      const el = pupEls[pup.name];
+      if (el.classList.contains('used')) return;
+      const x = areaRect.width * (0.03 + i * 0.155) + 6;
+      const y = areaRect.height - 96;
+      el.style.left = x + 'px';
+      el.style.top = y + 'px';
+    });
+  }
+
+  // ---------- missions ----------
+  function arriveMission() {
+    const m = MISSIONS[missionIndex];
+    busy = false;
+    missionNumEl.textContent = missionIndex + 1;
+    missionText.textContent = 'Paw Patrol, to the Lookout! ' + m.text;
+    nextBtn.style.display = 'none';
+    sceneEm.textContent = m.em2 + m.em;
+    sceneSub.textContent = 'Drag the right pup here!';
+    Object.values(pupEls).forEach(el => { el.classList.remove('used'); });
+    layoutTray();
+    speak('Paw Patrol, to the Lookout! ' + m.text, 1.3);
+    hintEl.textContent = 'Read the mission, then drag the right pup! 🐾';
+  }
+
+  function rescueComplete(m, pup) {
+    busy = true;
+    sceneEm.textContent = m.solvedEm;
+    sceneSub.textContent = m.solvedText;
+    missionText.textContent = pup.cheer + ' ' + m.solvedText;
+    stars++;
+    starsEl.textContent = stars;
+    burstConfetti();
+    jingle();
+    hintEl.textContent = pup.name + ' saved the day! 🐾';
+    speak(pup.cheer + ' ' + m.solvedText + ' Paw Patrol is on a roll!', 1.4);
+    // paw badge
+    const badge = document.createElement('div');
+    badge.className = 'pawBurst';
+    badge.textContent = '🐾';
+    badge.style.left = '45%';
+    badge.style.top = '30%';
+    playArea.appendChild(badge);
+    setTimeout(() => badge.remove(), 1100);
+    setTimeout(() => {
+      busy = false;
+      nextBtn.style.display = 'inline-block';
+    }, 1200);
+  }
+
+  nextBtn.addEventListener('click', () => {
+    missionIndex++;
+    if (missionIndex >= MISSIONS.length) { finale(); return; }
+    arriveMission();
+  });
+
+  function finale() {
+    missionText.textContent = '🐾 All rescues complete! Adventure Bay is safe!';
+    nextBtn.style.display = 'none';
+    burstConfetti();
+    setTimeout(burstConfetti, 500);
+    setTimeout(burstConfetti, 1000);
+    card.innerHTML = `
+      <h2>🐾 Super Rescue Team! 🐕</h2>
+      <p>You helped the Paw Patrol finish <strong>all 6 rescues</strong> — Chase, Marshall, Skye, Rubble, Rocky, and Zuma could not have done it without you, <strong>Sabrina</strong>! 💖</p>
+      <p>Ryder gives you <b>five paw prints</b>! 🐾🐾🐾🐾🐾</p>
+      <button id="againBtn">Rescue again ▶</button>`;
+    overlay.classList.remove('hidden');
+    document.getElementById('againBtn').addEventListener('click', () => {
+      missionIndex = 0;
+      stars = 0;
+      starsEl.textContent = '0';
+      overlay.classList.add('hidden');
+      arriveMission();
+    });
+    speak('Super rescue team! All of Adventure Bay is safe! Thank you, Sabrina!', 1.4);
+  }
+
+  // ---------- dragging ----------
+  let drag = null;
+  PUPS.forEach(pup => {
+    const el = pupEls[pup.name];
+    el.addEventListener('pointerdown', e => {
+      if (busy) return;
+      const areaRect = playArea.getBoundingClientRect();
+      drag = {
+        pup,
+        el,
+        offX: e.clientX - areaRect.left - (parseFloat(el.style.left) || 0),
+        offY: e.clientY - areaRect.top - (parseFloat(el.style.top) || 0),
+      };
+      el.classList.add('dragging');
+      try { el.setPointerCapture(e.pointerId); } catch (err) { }
+      blip(520, 0.06);
+      e.preventDefault();
+    });
+    el.addEventListener('pointermove', e => {
+      if (!drag || drag.el !== el) return;
+      const areaRect = playArea.getBoundingClientRect();
+      el.style.left = (e.clientX - areaRect.left - drag.offX) + 'px';
+      el.style.top = (e.clientY - areaRect.top - drag.offY) + 'px';
+      const pr = el.getBoundingClientRect();
+      const sr = scene.getBoundingClientRect();
+      const over = pr.right > sr.left && pr.left < sr.right && pr.bottom > sr.top && pr.top < sr.bottom;
+      scene.classList.toggle('glow', over);
+    });
+    el.addEventListener('pointerup', e => {
+      if (!drag || drag.el !== el) return;
+      el.classList.remove('dragging');
+      scene.classList.remove('glow');
+      const pr = el.getBoundingClientRect();
+      const sr = scene.getBoundingClientRect();
+      const over = pr.right > sr.left && pr.left < sr.right && pr.bottom > sr.top && pr.top < sr.bottom;
+      const m = MISSIONS[missionIndex];
+      drag = null;
+      if (!over) { layoutTray(); blip(300, 0.07); return; }
+
+      if (pup.name === m.pup) {
+        // correct rescue!
+        el.classList.add('used');
+        rescueComplete(m, pup);
+        layoutTray();
+      } else {
+        const right = PUPS.find(x => x.name === m.pup);
+        layoutTray();
+        blip(300, 0.1);
+        hintEl.textContent = 'Hmm! That is a job for ' + right.name + ' ' + right.veh + '!';
+        speak('Hmm, that is a job for a different pup! Try ' + right.name + '!', 1.3);
+      }
+    });
+  });
+
+  document.getElementById('startBtn').addEventListener('click', () => {
+    overlay.classList.add('hidden');
+    arriveMission();
+  });
+
+  window.addEventListener('resize', layoutTray);
+  layoutTray();
+})();
+</script>
+</body>
+</html>
